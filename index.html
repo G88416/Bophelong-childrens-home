@@ -721,16 +721,89 @@
 </div>
 
 <footer>
-    <p>&copy; 2026 Orphanage Management System. All data is stored locally in your browser.</p>
+    <p>&copy; 2026 Orphanage Management System. Data synced with Firebase Firestore.</p>
 </footer>
 
+<!-- Firebase compat SDK (v9 compat build – works as global firebase.*) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
 <script>
+// ===================== FIREBASE INITIALISATION =====================
+// Replace the placeholder values below with your project's Firebase config
+// (Firebase console → Project settings → Your apps → SDK setup and configuration)
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+let firestoreDB = null;
+let firebaseStorage = null;
+try {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    firestoreDB = firebase.firestore();
+    firebaseStorage = firebase.storage();
+
+    // Load each collection from Firestore into localStorage on startup
+    const collections = ['children','medical','vaccines','staff','donations','adoptions','events','inventory'];
+    collections.forEach(col => {
+        firestoreDB.collection(col).get().then(snapshot => {
+            if (!snapshot.empty) {
+                const items = snapshot.docs.map(d => d.data());
+                localStorage.setItem('oms_' + col, JSON.stringify(items));
+                // Re-render whichever section is currently active
+                const active = document.querySelector('.section.active');
+                if (active) showSection(active.id);
+            }
+        }).catch(() => {});
+    });
+    firestoreDB.collection('settings').doc('org').get().then(doc => {
+        if (doc.exists) {
+            localStorage.setItem('oms_settings', JSON.stringify(doc.data()));
+        }
+    }).catch(() => {});
+} catch (e) {
+    console.warn('Firebase initialisation skipped – running in offline mode.', e);
+}
+
 // ===================== DATA STORE =====================
+// localStorage provides instant synchronous reads required by all render
+// functions.  Every write is also mirrored to Firestore when available so
+// that data persists across devices and browsers.
 const DB = {
     get(key) { try { return JSON.parse(localStorage.getItem('oms_' + key) || '[]'); } catch(e) { return []; } },
-    set(key, val) { localStorage.setItem('oms_' + key, JSON.stringify(val)); },
+    set(key, val) {
+        // Capture previous items before overwriting localStorage so we can
+        // detect deletions without a Firestore read round-trip.
+        const prev = this.get(key);
+        localStorage.setItem('oms_' + key, JSON.stringify(val));
+        if (firestoreDB) {
+            // Upsert every item in the new list (create or overwrite by id)
+            val.forEach(item => {
+                firestoreDB.collection(key).doc(String(item.id)).set(item).catch(() => {});
+            });
+            // Delete items that were removed from the list
+            const newIds = new Set(val.map(item => String(item.id)));
+            prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
+                firestoreDB.collection(key).doc(String(item.id)).delete().catch(() => {});
+            });
+        }
+    },
     getObj(key, def) { try { return JSON.parse(localStorage.getItem('oms_' + key) || JSON.stringify(def)); } catch(e) { return def; } },
-    setObj(key, val) { localStorage.setItem('oms_' + key, JSON.stringify(val)); }
+    setObj(key, val) {
+        localStorage.setItem('oms_' + key, JSON.stringify(val));
+        if (firestoreDB) {
+            firestoreDB.collection('settings').doc(key).set(val).catch(() => {});
+        }
+    }
 };
 
 function genId() { return Date.now() + Math.floor(Math.random() * 1000); }

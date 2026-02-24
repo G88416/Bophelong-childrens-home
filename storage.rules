@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Documents uploaded by authenticated users (max 10 MB per file)
+    match /documents/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size <= 10 * 1024 * 1024;
+    }
+
+    // Shared organisation assets readable by all authenticated users,
+    // writable only by the uploader (max 10 MB per file)
+    match /assets/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size <= 10 * 1024 * 1024;
+    }
+  }
+}
