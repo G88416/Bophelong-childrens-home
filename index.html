@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orphanage Management System</title>
+    <title>Bophelong Childrens Home Management System</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -17,11 +17,13 @@
             padding: 18px 20px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
+            position: relative;
+            text-align: center;
         }
         header h1 { font-size: 1.5rem; }
         header p { font-size: 0.85rem; opacity: 0.9; }
-        .header-right { font-size: 0.85rem; text-align: right; }
+        .header-right { font-size: 0.85rem; text-align: right; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); }
         nav {
             background-color: #1a1a2e;
             overflow-x: auto;
@@ -292,7 +294,7 @@
 <div id="login-overlay">
     <div class="login-card">
         <div class="login-logo">🏠</div>
-        <h2>Orphanage Management</h2>
+        <h2>Bophelong Childrens Home Management System</h2>
         <p class="subtitle">Sign in to access the system</p>
         <div id="login-error" class="login-error"></div>
         <input type="email" id="login-email" placeholder="Email address" style="margin-bottom:12px;" onkeydown="if(event.key==='Enter')doLogin()">
@@ -305,7 +307,7 @@
 
 <header>
     <div>
-        <h1>🏠 Orphanage Management System</h1>
+        <h1>🏠 Bophelong Childrens Home Management System</h1>
         <p>A comprehensive system to manage orphanage operations efficiently.</p>
     </div>
     <div class="header-right">
@@ -339,7 +341,7 @@
     <!-- Home Section -->
     <div id="home" class="section">
         <div class="card">
-            <h2>Welcome to the Orphanage Management System</h2>
+            <h2>Welcome to the Bophelong Childrens Home Management System</h2>
             <p style="color:#555; line-height:1.6; margin-bottom:12px;">
                 This system provides comprehensive tools for managing all aspects of an orphanage including child records, medical records, staff details, donations, adoptions, events, and inventory. All data is saved locally in your browser.
             </p>
@@ -893,7 +895,7 @@
 </div>
 
 <footer>
-    <p>&copy; 2026 Orphanage Management System. Data synced with Firebase Firestore.</p>
+    <p>&copy; 2026 Bophelong Childrens Home Management System. Data synced with Firebase Firestore.</p>
 </footer>
 
 <!-- Firebase compat SDK (v9 compat build – works as global firebase.*) -->
@@ -1938,7 +1940,7 @@ function renderReports() {
 function printReport(type) {
     let html = '';
     const settings = DB.getObj('settings', {});
-    const orgName = settings.orgName || 'Orphanage Management System';
+    const orgName = settings.orgName || 'Bophelong Childrens Home Management System';
     const now = new Date().toLocaleString();
     const header = `<h2>${orgName}</h2><p>Generated: ${now}</p><hr>`;
 
