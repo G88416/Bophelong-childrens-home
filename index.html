@@ -5,585 +5,1653 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orphanage Management System</title>
     <style>
-        /* Comprehensive CSS for styling the entire system */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f0f4f8;
             color: #333;
         }
         header {
-            background-color: #007bff;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
             color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
+        header h1 { font-size: 1.5rem; }
+        header p { font-size: 0.85rem; opacity: 0.9; }
+        .header-right { font-size: 0.85rem; text-align: right; }
         nav {
-            background-color: #333;
-            overflow: hidden;
+            background-color: #1a1a2e;
+            overflow-x: auto;
+            white-space: nowrap;
         }
         nav a {
-            float: left;
-            display: block;
-            color: white;
-            text-align: center;
-            padding: 14px 20px;
+            display: inline-block;
+            color: #ccc;
+            padding: 13px 16px;
             text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.2s, color 0.2s;
         }
-        nav a:hover {
-            background-color: #ddd;
-            color: black;
+        nav a:hover, nav a.active {
+            background-color: #007bff;
+            color: white;
         }
         .container {
             padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
+            padding-bottom: 60px;
         }
-        .section {
-            background-color: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .section { display: none; }
+        .section.active { display: block; }
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 24px;
         }
-        h2 {
-            color: #007bff;
-        }
-        form {
+        h2 { color: #007bff; margin-bottom: 16px; font-size: 1.4rem; }
+        h3 { color: #333; margin-bottom: 12px; font-size: 1.1rem; }
+        .form-grid {
             display: grid;
-            gap: 10px;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
         }
-        label {
-            font-weight: bold;
-        }
+        .form-grid .full-width { grid-column: 1 / -1; }
+        label { font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 4px; color: #555; }
         input, select, textarea {
-            padding: 8px;
+            padding: 9px 12px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
             width: 100%;
-            box-sizing: border-box;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
         }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px;
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        textarea { resize: vertical; min-height: 70px; }
+        .btn {
+            padding: 9px 18px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 600;
+            transition: opacity 0.2s, transform 0.1s;
         }
-        button:hover {
-            background-color: #0056b3;
+        .btn:hover { opacity: 0.88; }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+            align-items: center;
         }
+        .search-bar input { max-width: 320px; }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            font-size: 0.88rem;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
+            border: 1px solid #e8e8e8;
+            padding: 10px 12px;
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background: #f7f9fc;
+            font-weight: 700;
+            color: #555;
         }
-        .report-chart {
-            height: 300px;
-            background-color: #eee;
-            margin-top: 20px;
+        tr:nth-child(even) td { background: #fafafa; }
+        tr:hover td { background: #f0f4ff; }
+        .badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .badge-secondary { background: #e2e3e5; color: #383d41; }
+        /* Dashboard stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            border-left: 4px solid #007bff;
+        }
+        .stat-card.green { border-left-color: #28a745; }
+        .stat-card.orange { border-left-color: #fd7e14; }
+        .stat-card.red { border-left-color: #dc3545; }
+        .stat-card.purple { border-left-color: #6f42c1; }
+        .stat-card.teal { border-left-color: #20c997; }
+        .stat-card.pink { border-left-color: #e83e8c; }
+        .stat-number { font-size: 2rem; font-weight: 700; color: #007bff; }
+        .stat-card.green .stat-number { color: #28a745; }
+        .stat-card.orange .stat-number { color: #fd7e14; }
+        .stat-card.red .stat-number { color: #dc3545; }
+        .stat-card.purple .stat-number { color: #6f42c1; }
+        .stat-card.teal .stat-number { color: #20c997; }
+        .stat-card.pink .stat-number { color: #e83e8c; }
+        .stat-label { font-size: 0.78rem; color: #888; margin-top: 4px; }
+        /* Chart bars */
+        .bar-chart { margin-top: 16px; }
+        .bar-row { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; font-size: 0.83rem; }
+        .bar-label { width: 110px; text-align: right; color: #555; }
+        .bar-track { flex: 1; background: #eee; border-radius: 4px; height: 22px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; color: white; font-size: 0.75rem; font-weight: 700; transition: width 0.6s; }
+        /* Alerts */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 14px;
+            font-size: 0.88rem;
             display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; color: #856404; }
+        .alert-danger  { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+        .alert-info    { background: #d1ecf1; border-left: 4px solid #17a2b8; color: #0c5460; }
+        .alert-success { background: #d4edda; border-left: 4px solid #28a745; color: #155724; }
+        /* Toast */
+        #toast-container { position: fixed; bottom: 60px; right: 20px; z-index: 9999; }
+        .toast {
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 0.88rem;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+            max-width: 320px;
+        }
+        .toast.success { background: #28a745; }
+        .toast.error   { background: #dc3545; }
+        .toast.info    { background: #007bff; }
+        @keyframes slideIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
             align-items: center;
             justify-content: center;
-            font-style: italic;
         }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            max-width: 560px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .modal h3 { margin-bottom: 18px; color: #007bff; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
         footer {
-            background-color: #333;
-            color: white;
+            background: #1a1a2e;
+            color: #aaa;
             text-align: center;
-            padding: 10px;
+            padding: 12px;
             position: fixed;
             bottom: 0;
             width: 100%;
+            font-size: 0.82rem;
         }
-        /* Hide sections by default, show via JS */
-        .section:not(#home) {
-            display: none;
+        /* Home quick-nav cards */
+        .quick-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-top: 18px; }
+        .quick-card {
+            background: #f7f9fc;
+            border: 2px solid #e0e8f0;
+            border-radius: 10px;
+            padding: 18px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .quick-card:hover { border-color: #007bff; background: #e8f0fe; }
+        .quick-card-icon { font-size: 2rem; margin-bottom: 8px; }
+        .quick-card-label { font-size: 0.82rem; font-weight: 600; color: #444; }
+        /* Responsive */
+        @media (max-width: 640px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            header { flex-direction: column; text-align: center; gap: 6px; }
         }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>Orphanage Management System</h1>
-    <p>A comprehensive system to manage orphanage operations efficiently.</p>
+    <div>
+        <h1>🏠 Orphanage Management System</h1>
+        <p>A comprehensive system to manage orphanage operations efficiently.</p>
+    </div>
+    <div class="header-right" id="header-clock"></div>
 </header>
 
-<nav>
-    <a href="#" onclick="showSection('home')">Home</a>
-    <a href="#" onclick="showSection('dashboard')">Dashboard</a>
-    <a href="#" onclick="showSection('children')">Manage Children</a>
-    <a href="#" onclick="showSection('staff')">Manage Staff</a>
-    <a href="#" onclick="showSection('donations')">Manage Donations</a>
-    <a href="#" onclick="showSection('adoptions')">Manage Adoptions</a>
-    <a href="#" onclick="showSection('events')">Manage Events</a>
-    <a href="#" onclick="showSection('inventory')">Inventory Management</a>
-    <a href="#" onclick="showSection('reports')">Reports</a>
-    <a href="#" onclick="showSection('settings')">Settings</a>
+<nav id="main-nav">
+    <a href="#" onclick="showSection('home')" data-section="home">🏠 Home</a>
+    <a href="#" onclick="showSection('dashboard')" data-section="dashboard">📊 Dashboard</a>
+    <a href="#" onclick="showSection('children')" data-section="children">👶 Children</a>
+    <a href="#" onclick="showSection('medical')" data-section="medical">🏥 Medical Records</a>
+    <a href="#" onclick="showSection('staff')" data-section="staff">👤 Staff</a>
+    <a href="#" onclick="showSection('donations')" data-section="donations">💰 Donations</a>
+    <a href="#" onclick="showSection('adoptions')" data-section="adoptions">🤝 Adoptions</a>
+    <a href="#" onclick="showSection('events')" data-section="events">📅 Events</a>
+    <a href="#" onclick="showSection('inventory')" data-section="inventory">📦 Inventory</a>
+    <a href="#" onclick="showSection('reports')" data-section="reports">📈 Reports</a>
+    <a href="#" onclick="showSection('settings')" data-section="settings">⚙️ Settings</a>
 </nav>
+
+<div id="toast-container"></div>
 
 <div class="container">
 
     <!-- Home Section -->
     <div id="home" class="section">
-        <h2>Welcome to the Orphanage Management System</h2>
-        <p>This system provides comprehensive tools for managing all aspects of an orphanage, including child records, staff details, donations, adoptions, events, inventory, and detailed reports.</p>
-        <p>Use the navigation menu to access different modules. This is a static HTML prototype; in a real system, integrate with a backend like PHP/MySQL for data persistence.</p>
+        <div class="card">
+            <h2>Welcome to the Orphanage Management System</h2>
+            <p style="color:#555; line-height:1.6; margin-bottom:12px;">
+                This system provides comprehensive tools for managing all aspects of an orphanage including child records, medical records, staff details, donations, adoptions, events, and inventory. All data is saved locally in your browser.
+            </p>
+            <div id="home-alerts"></div>
+            <div class="quick-nav">
+                <div class="quick-card" onclick="showSection('dashboard')"><div class="quick-card-icon">📊</div><div class="quick-card-label">Dashboard</div></div>
+                <div class="quick-card" onclick="showSection('children')"><div class="quick-card-icon">👶</div><div class="quick-card-label">Children</div></div>
+                <div class="quick-card" onclick="showSection('medical')"><div class="quick-card-icon">🏥</div><div class="quick-card-label">Medical Records</div></div>
+                <div class="quick-card" onclick="showSection('staff')"><div class="quick-card-icon">👤</div><div class="quick-card-label">Staff</div></div>
+                <div class="quick-card" onclick="showSection('donations')"><div class="quick-card-icon">💰</div><div class="quick-card-label">Donations</div></div>
+                <div class="quick-card" onclick="showSection('adoptions')"><div class="quick-card-icon">🤝</div><div class="quick-card-label">Adoptions</div></div>
+                <div class="quick-card" onclick="showSection('events')"><div class="quick-card-icon">📅</div><div class="quick-card-label">Events</div></div>
+                <div class="quick-card" onclick="showSection('inventory')"><div class="quick-card-icon">📦</div><div class="quick-card-label">Inventory</div></div>
+                <div class="quick-card" onclick="showSection('reports')"><div class="quick-card-icon">📈</div><div class="quick-card-label">Reports</div></div>
+                <div class="quick-card" onclick="showSection('settings')"><div class="quick-card-icon">⚙️</div><div class="quick-card-label">Settings</div></div>
+            </div>
+        </div>
     </div>
 
     <!-- Dashboard Section -->
     <div id="dashboard" class="section">
-        <h2>Dashboard</h2>
-        <p>Overview of key metrics:</p>
-        <ul>
-            <li>Total Children: 50</li>
-            <li>Total Staff: 20</li>
-            <li>Total Donations This Month: $10,000</li>
-            <li>Pending Adoptions: 5</li>
-            <li>Upcoming Events: 3</li>
-            <li>Inventory Alerts: Low on food supplies</li>
-        </ul>
-        <div class="report-chart">Dashboard Chart Placeholder (e.g., Pie chart of demographics)</div>
+        <div class="card">
+            <h2>📊 Dashboard Overview</h2>
+            <div id="dashboard-alerts"></div>
+            <div class="stats-grid" id="stats-grid"></div>
+            <h3>Gender Distribution</h3>
+            <div class="bar-chart" id="gender-chart"></div>
+            <h3 style="margin-top:18px;">Donation Types</h3>
+            <div class="bar-chart" id="donation-chart"></div>
+        </div>
     </div>
 
     <!-- Manage Children Section -->
     <div id="children" class="section">
-        <h2>Manage Children</h2>
-        <form>
-            <h3>Add/Edit Child</h3>
-            <label for="child-name">Name:</label>
-            <input type="text" id="child-name" placeholder="Full Name">
-            
-            <label for="child-age">Age:</label>
-            <input type="number" id="child-age" placeholder="Age">
-            
-            <label for="child-gender">Gender:</label>
-            <select id="child-gender">
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-            </select>
-            
-            <label for="child-arrival">Arrival Date:</label>
-            <input type="date" id="child-arrival">
-            
-            <label for="child-health">Health Status:</label>
-            <textarea id="child-health" placeholder="Health notes"></textarea>
-            
-            <label for="child-education">Education Level:</label>
-            <input type="text" id="child-education" placeholder="Current education">
-            
-            <label for="child-photo">Photo:</label>
-            <input type="file" id="child-photo">
-            
-            <button type="button">Save Child</button>
-        </form>
-        
-        <h3>Children List</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Gender</th>
-                    <th>Arrival Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>John Doe</td>
-                    <td>8</td>
-                    <td>Male</td>
-                    <td>2020-01-15</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>👶 Manage Children</h2>
+            <button class="btn btn-primary" onclick="openModal('child-modal')">+ Add Child</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="child-search" placeholder="🔍 Search by name, gender..." oninput="renderChildren()">
+                <select id="child-filter-gender" onchange="renderChildren()">
+                    <option value="">All Genders</option>
+                    <option>Male</option><option>Female</option><option>Other</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Gender</th><th>Arrival Date</th><th>Education</th><th>Health</th><th>Actions</th></tr></thead>
+                    <tbody id="children-tbody"></tbody>
+                </table>
+            </div>
+            <p id="children-empty" style="color:#888; padding:12px; display:none;">No children records found.</p>
+        </div>
+    </div>
+
+    <!-- Medical Records Section -->
+    <div id="medical" class="section">
+        <div class="card">
+            <h2>🏥 Medical Records</h2>
+            <button class="btn btn-primary" onclick="openModal('medical-modal')">+ Add Medical Record</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="medical-search" placeholder="🔍 Search by child name, diagnosis..." oninput="renderMedical()">
+                <select id="medical-filter-type" onchange="renderMedical()">
+                    <option value="">All Types</option>
+                    <option>General Checkup</option>
+                    <option>Vaccination</option>
+                    <option>Illness Treatment</option>
+                    <option>Dental</option>
+                    <option>Eye Examination</option>
+                    <option>Emergency</option>
+                    <option>Follow-up</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Child Name</th><th>Date</th><th>Type</th><th>Doctor</th><th>Diagnosis</th><th>Medications</th><th>Allergies</th><th>Next Visit</th><th>Actions</th></tr></thead>
+                    <tbody id="medical-tbody"></tbody>
+                </table>
+            </div>
+            <p id="medical-empty" style="color:#888; padding:12px; display:none;">No medical records found.</p>
+        </div>
+        <div class="card">
+            <h3>Vaccination Tracker</h3>
+            <button class="btn btn-success btn-sm" onclick="openModal('vaccine-modal')">+ Add Vaccination</button>
+            <div style="overflow-x:auto; margin-top:12px;">
+                <table>
+                    <thead><tr><th>#</th><th>Child Name</th><th>Vaccine</th><th>Date Given</th><th>Next Due</th><th>Administered By</th><th>Actions</th></tr></thead>
+                    <tbody id="vaccine-tbody"></tbody>
+                </table>
+            </div>
+            <p id="vaccine-empty" style="color:#888; padding:12px; display:none;">No vaccination records found.</p>
+        </div>
     </div>
 
     <!-- Manage Staff Section -->
     <div id="staff" class="section">
-        <h2>Manage Staff</h2>
-        <form>
-            <h3>Add/Edit Staff</h3>
-            <label for="staff-name">Name:</label>
-            <input type="text" id="staff-name" placeholder="Full Name">
-            
-            <label for="staff-role">Role:</label>
-            <select id="staff-role">
-                <option>Administrator</option>
-                <option>Caregiver</option>
-                <option>Teacher</option>
-                <option>Medical Staff</option>
-            </select>
-            
-            <label for="staff-contact">Contact:</label>
-            <input type="tel" id="staff-contact" placeholder="Phone Number">
-            
-            <label for="staff-email">Email:</label>
-            <input type="email" id="staff-email" placeholder="Email">
-            
-            <label for="staff-salary">Salary:</label>
-            <input type="number" id="staff-salary" placeholder="Monthly Salary">
-            
-            <label for="staff-join">Join Date:</label>
-            <input type="date" id="staff-join">
-            
-            <button type="button">Save Staff</button>
-        </form>
-        
-        <h3>Staff List</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Contact</th>
-                    <th>Join Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Jane Smith</td>
-                    <td>Caregiver</td>
-                    <td>123-456-7890</td>
-                    <td>2019-05-10</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>👤 Manage Staff</h2>
+            <button class="btn btn-primary" onclick="openModal('staff-modal')">+ Add Staff Member</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="staff-search" placeholder="🔍 Search by name, role..." oninput="renderStaff()">
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Name</th><th>Role</th><th>Contact</th><th>Email</th><th>Salary</th><th>Join Date</th><th>Actions</th></tr></thead>
+                    <tbody id="staff-tbody"></tbody>
+                </table>
+            </div>
+            <p id="staff-empty" style="color:#888; padding:12px; display:none;">No staff records found.</p>
+        </div>
     </div>
 
     <!-- Manage Donations Section -->
     <div id="donations" class="section">
-        <h2>Manage Donations</h2>
-        <form>
-            <h3>Add Donation</h3>
-            <label for="donor-name">Donor Name:</label>
-            <input type="text" id="donor-name" placeholder="Full Name">
-            
-            <label for="donation-amount">Amount:</label>
-            <input type="number" id="donation-amount" placeholder="Amount in USD">
-            
-            <label for="donation-type">Type:</label>
-            <select id="donation-type">
-                <option>Cash</option>
-                <option>Goods</option>
-                <option>Services</option>
-            </select>
-            
-            <label for="donation-date">Date:</label>
-            <input type="date" id="donation-date">
-            
-            <label for="donation-notes">Notes:</label>
-            <textarea id="donation-notes" placeholder="Additional details"></textarea>
-            
-            <button type="button">Record Donation</button>
-        </form>
-        
-        <h3>Donations List</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Donor</th>
-                    <th>Amount</th>
-                    <th>Type</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Anonymous</td>
-                    <td>500</td>
-                    <td>Cash</td>
-                    <td>2023-02-01</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>💰 Manage Donations</h2>
+            <button class="btn btn-primary" onclick="openModal('donation-modal')">+ Record Donation</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="donation-search" placeholder="🔍 Search by donor..." oninput="renderDonations()">
+                <select id="donation-filter-type" onchange="renderDonations()">
+                    <option value="">All Types</option>
+                    <option>Cash</option><option>Goods</option><option>Services</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Donor</th><th>Amount</th><th>Type</th><th>Date</th><th>Notes</th><th>Actions</th></tr></thead>
+                    <tbody id="donations-tbody"></tbody>
+                </table>
+            </div>
+            <p id="donations-empty" style="color:#888; padding:12px; display:none;">No donation records found.</p>
+            <div id="donation-total" style="text-align:right; font-weight:700; margin-top:10px; color:#28a745;"></div>
+        </div>
     </div>
 
     <!-- Manage Adoptions Section -->
     <div id="adoptions" class="section">
-        <h2>Manage Adoptions</h2>
-        <form>
-            <h3>Add Adoption Record</h3>
-            <label for="adopt-child">Child ID:</label>
-            <input type="text" id="adopt-child" placeholder="Child ID">
-            
-            <label for="adopt-parent">Adoptive Parent Name:</label>
-            <input type="text" id="adopt-parent" placeholder="Full Name">
-            
-            <label for="adopt-contact">Contact:</label>
-            <input type="tel" id="adopt-contact" placeholder="Phone">
-            
-            <label for="adopt-date">Adoption Date:</label>
-            <input type="date" id="adopt-date">
-            
-            <label for="adopt-status">Status:</label>
-            <select id="adopt-status">
-                <option>Pending</option>
-                <option>Approved</option>
-                <option>Completed</option>
-            </select>
-            
-            <label for="adopt-notes">Notes:</label>
-            <textarea id="adopt-notes" placeholder="Legal notes"></textarea>
-            
-            <button type="button">Save Adoption</button>
-        </form>
-        
-        <h3>Adoptions List</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Child</th>
-                    <th>Parent</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>John Doe</td>
-                    <td>Mr. & Mrs. Johnson</td>
-                    <td>2023-03-15</td>
-                    <td>Completed</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>🤝 Manage Adoptions</h2>
+            <button class="btn btn-primary" onclick="openModal('adoption-modal')">+ Add Adoption Record</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="adoption-search" placeholder="🔍 Search by child, parent..." oninput="renderAdoptions()">
+                <select id="adoption-filter-status" onchange="renderAdoptions()">
+                    <option value="">All Statuses</option>
+                    <option>Pending</option><option>Approved</option><option>Completed</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Child</th><th>Adoptive Parent</th><th>Contact</th><th>Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+                    <tbody id="adoptions-tbody"></tbody>
+                </table>
+            </div>
+            <p id="adoptions-empty" style="color:#888; padding:12px; display:none;">No adoption records found.</p>
+        </div>
     </div>
 
     <!-- Manage Events Section -->
     <div id="events" class="section">
-        <h2>Manage Events</h2>
-        <form>
-            <h3>Add Event</h3>
-            <label for="event-name">Event Name:</label>
-            <input type="text" id="event-name" placeholder="Name">
-            
-            <label for="event-date">Date:</label>
-            <input type="date" id="event-date">
-            
-            <label for="event-time">Time:</label>
-            <input type="time" id="event-time">
-            
-            <label for="event-description">Description:</label>
-            <textarea id="event-description" placeholder="Details"></textarea>
-            
-            <label for="event-participants">Participants:</label>
-            <input type="text" id="event-participants" placeholder="e.g., All children">
-            
-            <button type="button">Save Event</button>
-        </form>
-        
-        <h3>Events List</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Description</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Annual Picnic</td>
-                    <td>2023-06-20</td>
-                    <td>10:00</td>
-                    <td>Fun day out</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>📅 Manage Events</h2>
+            <button class="btn btn-primary" onclick="openModal('event-modal')">+ Add Event</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="event-search" placeholder="🔍 Search events..." oninput="renderEvents()">
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Event Name</th><th>Date</th><th>Time</th><th>Participants</th><th>Description</th><th>Actions</th></tr></thead>
+                    <tbody id="events-tbody"></tbody>
+                </table>
+            </div>
+            <p id="events-empty" style="color:#888; padding:12px; display:none;">No events found.</p>
+        </div>
     </div>
 
     <!-- Inventory Management Section -->
     <div id="inventory" class="section">
-        <h2>Inventory Management</h2>
-        <form>
-            <h3>Add Inventory Item</h3>
-            <label for="item-name">Item Name:</label>
-            <input type="text" id="item-name" placeholder="Name">
-            
-            <label for="item-quantity">Quantity:</label>
-            <input type="number" id="item-quantity" placeholder="Quantity">
-            
-            <label for="item-category">Category:</label>
-            <select id="item-category">
-                <option>Food</option>
-                <option>Clothing</option>
-                <option>Medical</option>
-                <option>Toys</option>
-            </select>
-            
-            <label for="item-expiry">Expiry Date (if applicable):</label>
-            <input type="date" id="item-expiry">
-            
-            <label for="item-notes">Notes:</label>
-            <textarea id="item-notes" placeholder="Details"></textarea>
-            
-            <button type="button">Save Item</button>
-        </form>
-        
-        <h3>Inventory List</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Quantity</th>
-                    <th>Category</th>
-                    <th>Expiry</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Rice</td>
-                    <td>100 kg</td>
-                    <td>Food</td>
-                    <td>N/A</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>📦 Inventory Management</h2>
+            <button class="btn btn-primary" onclick="openModal('inventory-modal')">+ Add Item</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="inventory-search" placeholder="🔍 Search items..." oninput="renderInventory()">
+                <select id="inventory-filter-cat" onchange="renderInventory()">
+                    <option value="">All Categories</option>
+                    <option>Food</option><option>Clothing</option><option>Medical</option><option>Toys</option><option>Stationery</option><option>Other</option>
+                </select>
+            </div>
+            <div id="inventory-alerts"></div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Item Name</th><th>Quantity</th><th>Category</th><th>Expiry</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+                    <tbody id="inventory-tbody"></tbody>
+                </table>
+            </div>
+            <p id="inventory-empty" style="color:#888; padding:12px; display:none;">No inventory items found.</p>
+        </div>
     </div>
 
     <!-- Reports Section -->
     <div id="reports" class="section">
-        <h2>Reports</h2>
-        <p>Generate various reports:</p>
-        <button type="button">Generate Child Demographics Report</button>
-        <button type="button">Generate Financial Report</button>
-        <button type="button">Generate Adoption Statistics</button>
-        <button type="button">Generate Inventory Status</button>
-        
-        <div class="report-chart">Report Chart Placeholder (e.g., Bar chart of donations over time)</div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Report Type</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Child Demographics</td>
-                    <td>Age groups, genders, etc.</td>
-                </tr>
-                <tr>
-                    <td>Financial</td>
-                    <td>Income vs Expenses</td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>📈 Reports</h2>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+                <button class="btn btn-primary" onclick="printReport('children')">🖨️ Children Report</button>
+                <button class="btn btn-success" onclick="printReport('medical')">🖨️ Medical Report</button>
+                <button class="btn btn-warning" onclick="printReport('financial')">🖨️ Financial Report</button>
+                <button class="btn btn-info" onclick="printReport('adoptions')">🖨️ Adoption Report</button>
+                <button class="btn btn-secondary" onclick="printReport('inventory')">🖨️ Inventory Report</button>
+                <button class="btn btn-danger" onclick="exportData()">💾 Export All Data</button>
+            </div>
+            <div id="report-output"></div>
+        </div>
     </div>
 
     <!-- Settings Section -->
     <div id="settings" class="section">
-        <h2>System Settings</h2>
-        <form>
-            <h3>Update Settings</h3>
-            <label for="org-name">Organization Name:</label>
-            <input type="text" id="org-name" placeholder="Orphanage Name">
-            
-            <label for="org-address">Address:</label>
-            <textarea id="org-address" placeholder="Full Address"></textarea>
-            
-            <label for="org-contact">Contact Number:</label>
-            <input type="tel" id="org-contact" placeholder="Phone">
-            
-            <label for="org-email">Email:</label>
-            <input type="email" id="org-email" placeholder="Email">
-            
-            <label for="backup-frequency">Backup Frequency:</label>
-            <select id="backup-frequency">
-                <option>Daily</option>
-                <option>Weekly</option>
-                <option>Monthly</option>
-            </select>
-            
-            <button type="button">Save Settings</button>
-        </form>
-        
-        <h3>User Management</h3>
-        <p>Manage user accounts, roles, and permissions.</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>admin</td>
-                    <td>Administrator</td>
-                    <td><button>Edit</button> <button>Delete</button></td>
-                </tr>
-                <!-- Add more rows as needed -->
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>⚙️ System Settings</h2>
+            <div class="form-grid">
+                <div>
+                    <label for="org-name">Organization Name</label>
+                    <input type="text" id="org-name" placeholder="Orphanage Name">
+                </div>
+                <div>
+                    <label for="org-contact">Contact Number</label>
+                    <input type="tel" id="org-contact" placeholder="Phone">
+                </div>
+                <div>
+                    <label for="org-email">Email</label>
+                    <input type="email" id="org-email" placeholder="Email">
+                </div>
+                <div>
+                    <label for="backup-frequency">Backup Frequency</label>
+                    <select id="backup-frequency">
+                        <option>Daily</option><option>Weekly</option><option>Monthly</option>
+                    </select>
+                </div>
+                <div class="full-width">
+                    <label for="org-address">Address</label>
+                    <textarea id="org-address" placeholder="Full Address"></textarea>
+                </div>
+            </div>
+            <div style="margin-top:14px; display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                <button class="btn btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+            </div>
+        </div>
     </div>
 
+</div><!-- end .container -->
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Child Modal -->
+<div class="modal-overlay" id="child-modal">
+    <div class="modal">
+        <h3 id="child-modal-title">Add Child</h3>
+        <input type="hidden" id="child-edit-id">
+        <div class="form-grid">
+            <div><label>Full Name *</label><input type="text" id="c-name" placeholder="Full name"></div>
+            <div><label>Age *</label><input type="number" id="c-age" placeholder="Age" min="0" max="18"></div>
+            <div><label>Gender *</label>
+                <select id="c-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+            </div>
+            <div><label>Arrival Date</label><input type="date" id="c-arrival"></div>
+            <div><label>Education Level</label><input type="text" id="c-education" placeholder="e.g., Grade 4"></div>
+            <div><label>Health Status</label>
+                <select id="c-health-status"><option>Good</option><option>Fair</option><option>Needs Attention</option></select>
+            </div>
+            <div class="full-width"><label>Health Notes</label><textarea id="c-health" placeholder="Any health notes..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('child-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveChild()">Save Child</button>
+        </div>
+    </div>
+</div>
+
+<!-- Medical Record Modal -->
+<div class="modal-overlay" id="medical-modal">
+    <div class="modal">
+        <h3 id="medical-modal-title">Add Medical Record</h3>
+        <input type="hidden" id="medical-edit-id">
+        <div class="form-grid">
+            <div><label>Child Name *</label><input type="text" id="m-child" placeholder="Child's full name"></div>
+            <div><label>Visit Date *</label><input type="date" id="m-date"></div>
+            <div><label>Visit Type *</label>
+                <select id="m-type">
+                    <option>General Checkup</option><option>Vaccination</option><option>Illness Treatment</option>
+                    <option>Dental</option><option>Eye Examination</option><option>Emergency</option><option>Follow-up</option>
+                </select>
+            </div>
+            <div><label>Doctor / Clinician</label><input type="text" id="m-doctor" placeholder="Doctor name"></div>
+            <div><label>Facility / Hospital</label><input type="text" id="m-facility" placeholder="Hospital or clinic name"></div>
+            <div><label>Next Visit Date</label><input type="date" id="m-next-visit"></div>
+            <div class="full-width"><label>Diagnosis</label><textarea id="m-diagnosis" placeholder="Diagnosis or findings..."></textarea></div>
+            <div class="full-width"><label>Medications Prescribed</label><textarea id="m-medications" placeholder="List medications and dosage..."></textarea></div>
+            <div class="full-width"><label>Known Allergies</label><input type="text" id="m-allergies" placeholder="e.g., Penicillin, Peanuts"></div>
+            <div class="full-width"><label>Notes</label><textarea id="m-notes" placeholder="Additional observations..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('medical-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveMedical()">Save Record</button>
+        </div>
+    </div>
+</div>
+
+<!-- Vaccination Modal -->
+<div class="modal-overlay" id="vaccine-modal">
+    <div class="modal">
+        <h3 id="vaccine-modal-title">Add Vaccination Record</h3>
+        <input type="hidden" id="vaccine-edit-id">
+        <div class="form-grid">
+            <div><label>Child Name *</label><input type="text" id="v-child" placeholder="Child's full name"></div>
+            <div><label>Vaccine Name *</label><input type="text" id="v-name" placeholder="e.g., BCG, MMR, Polio"></div>
+            <div><label>Date Given *</label><input type="date" id="v-date"></div>
+            <div><label>Next Due Date</label><input type="date" id="v-next"></div>
+            <div class="full-width"><label>Administered By</label><input type="text" id="v-by" placeholder="Nurse/Doctor name"></div>
+            <div class="full-width"><label>Notes</label><textarea id="v-notes" placeholder="Any reactions or notes..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('vaccine-modal')">Cancel</button>
+            <button class="btn btn-success" onclick="saveVaccine()">Save Vaccination</button>
+        </div>
+    </div>
+</div>
+
+<!-- Staff Modal -->
+<div class="modal-overlay" id="staff-modal">
+    <div class="modal">
+        <h3 id="staff-modal-title">Add Staff Member</h3>
+        <input type="hidden" id="staff-edit-id">
+        <div class="form-grid">
+            <div><label>Full Name *</label><input type="text" id="s-name" placeholder="Full name"></div>
+            <div><label>Role *</label>
+                <select id="s-role">
+                    <option>Administrator</option><option>Caregiver</option><option>Teacher</option>
+                    <option>Medical Staff</option><option>Cook</option><option>Security</option><option>Other</option>
+                </select>
+            </div>
+            <div><label>Contact</label><input type="tel" id="s-contact" placeholder="Phone number"></div>
+            <div><label>Email</label><input type="email" id="s-email" placeholder="Email address"></div>
+            <div><label>Monthly Salary</label><input type="number" id="s-salary" placeholder="Amount"></div>
+            <div><label>Join Date</label><input type="date" id="s-join"></div>
+            <div class="full-width"><label>Notes</label><textarea id="s-notes" placeholder="Additional info..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('staff-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveStaff()">Save Staff</button>
+        </div>
+    </div>
+</div>
+
+<!-- Donation Modal -->
+<div class="modal-overlay" id="donation-modal">
+    <div class="modal">
+        <h3 id="donation-modal-title">Record Donation</h3>
+        <input type="hidden" id="donation-edit-id">
+        <div class="form-grid">
+            <div><label>Donor Name *</label><input type="text" id="d-donor" placeholder="Full name or Anonymous"></div>
+            <div><label>Amount (if cash)</label><input type="number" id="d-amount" placeholder="Amount in currency" min="0"></div>
+            <div><label>Type *</label>
+                <select id="d-type"><option>Cash</option><option>Goods</option><option>Services</option></select>
+            </div>
+            <div><label>Date *</label><input type="date" id="d-date"></div>
+            <div class="full-width"><label>Notes / Description</label><textarea id="d-notes" placeholder="What was donated, any conditions..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('donation-modal')">Cancel</button>
+            <button class="btn btn-success" onclick="saveDonation()">Record Donation</button>
+        </div>
+    </div>
+</div>
+
+<!-- Adoption Modal -->
+<div class="modal-overlay" id="adoption-modal">
+    <div class="modal">
+        <h3 id="adoption-modal-title">Add Adoption Record</h3>
+        <input type="hidden" id="adoption-edit-id">
+        <div class="form-grid">
+            <div><label>Child Name *</label><input type="text" id="a-child" placeholder="Child's full name"></div>
+            <div><label>Adoptive Parent *</label><input type="text" id="a-parent" placeholder="Parent full name"></div>
+            <div><label>Contact</label><input type="tel" id="a-contact" placeholder="Phone number"></div>
+            <div><label>Adoption Date</label><input type="date" id="a-date"></div>
+            <div><label>Status</label>
+                <select id="a-status"><option>Pending</option><option>Approved</option><option>Completed</option></select>
+            </div>
+            <div class="full-width"><label>Legal Notes</label><textarea id="a-notes" placeholder="Legal notes, case number..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('adoption-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveAdoption()">Save Adoption</button>
+        </div>
+    </div>
+</div>
+
+<!-- Event Modal -->
+<div class="modal-overlay" id="event-modal">
+    <div class="modal">
+        <h3 id="event-modal-title">Add Event</h3>
+        <input type="hidden" id="event-edit-id">
+        <div class="form-grid">
+            <div><label>Event Name *</label><input type="text" id="e-name" placeholder="Event name"></div>
+            <div><label>Date *</label><input type="date" id="e-date"></div>
+            <div><label>Time</label><input type="time" id="e-time"></div>
+            <div><label>Participants</label><input type="text" id="e-participants" placeholder="e.g., All children"></div>
+            <div class="full-width"><label>Description</label><textarea id="e-description" placeholder="Event details..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('event-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEvent()">Save Event</button>
+        </div>
+    </div>
+</div>
+
+<!-- Inventory Modal -->
+<div class="modal-overlay" id="inventory-modal">
+    <div class="modal">
+        <h3 id="inventory-modal-title">Add Inventory Item</h3>
+        <input type="hidden" id="inventory-edit-id">
+        <div class="form-grid">
+            <div><label>Item Name *</label><input type="text" id="i-name" placeholder="Item name"></div>
+            <div><label>Quantity *</label><input type="number" id="i-quantity" placeholder="Quantity" min="0"></div>
+            <div><label>Unit</label><input type="text" id="i-unit" placeholder="e.g., kg, pieces, boxes"></div>
+            <div><label>Category</label>
+                <select id="i-category"><option>Food</option><option>Clothing</option><option>Medical</option><option>Toys</option><option>Stationery</option><option>Other</option></select>
+            </div>
+            <div><label>Low Stock Threshold</label><input type="number" id="i-threshold" placeholder="Alert when below this" min="0"></div>
+            <div><label>Expiry Date</label><input type="date" id="i-expiry"></div>
+            <div class="full-width"><label>Notes</label><textarea id="i-notes" placeholder="Details..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('inventory-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveInventory()">Save Item</button>
+        </div>
+    </div>
 </div>
 
 <footer>
-    <p>&copy; 2026 Orphanage Management System. All rights reserved.</p>
+    <p>&copy; 2026 Orphanage Management System. All data is stored locally in your browser.</p>
 </footer>
 
 <script>
-    // JavaScript for navigation and interactivity
-    function showSection(sectionId) {
-        const sections = document.querySelectorAll('.section');
-        sections.forEach(section => {
-            section.style.display = 'none';
-        });
-        document.getElementById(sectionId).style.display = 'block';
+// ===================== DATA STORE =====================
+const DB = {
+    get(key) { try { return JSON.parse(localStorage.getItem('oms_' + key) || '[]'); } catch(e) { return []; } },
+    set(key, val) { localStorage.setItem('oms_' + key, JSON.stringify(val)); },
+    getObj(key, def) { try { return JSON.parse(localStorage.getItem('oms_' + key) || JSON.stringify(def)); } catch(e) { return def; } },
+    setObj(key, val) { localStorage.setItem('oms_' + key, JSON.stringify(val)); }
+};
+
+function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
+
+// ===================== NAVIGATION =====================
+function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#main-nav a').forEach(a => a.classList.remove('active'));
+    const sec = document.getElementById(id);
+    if (sec) sec.classList.add('active');
+    const navLink = document.querySelector(`#main-nav a[data-section="${id}"]`);
+    if (navLink) navLink.classList.add('active');
+    // Re-render section data
+    const renderMap = {
+        dashboard: [renderDashboard, renderHomeAlerts],
+        children: [renderChildren],
+        medical: [renderMedical, renderVaccinations],
+        staff: [renderStaff],
+        donations: [renderDonations],
+        adoptions: [renderAdoptions],
+        events: [renderEvents],
+        inventory: [renderInventory],
+        reports: [renderReports],
+        settings: [loadSettings],
+        home: [renderHomeAlerts]
+    };
+    (renderMap[id] || []).forEach(fn => fn());
+    return false;
+}
+
+// ===================== TOAST =====================
+function toast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+// ===================== MODAL =====================
+function openModal(id, resetFn) {
+    document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+    });
+});
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===================== CHILDREN =====================
+function saveChild() {
+    const id = document.getElementById('child-edit-id').value;
+    const name = document.getElementById('c-name').value.trim();
+    const age = document.getElementById('c-age').value.trim();
+    const gender = document.getElementById('c-gender').value;
+    if (!name || !age || !gender) { toast('Please fill required fields (Name, Age, Gender)', 'error'); return; }
+    const child = {
+        id: id ? parseInt(id) : genId(),
+        name, age: parseInt(age), gender,
+        arrival: document.getElementById('c-arrival').value,
+        education: document.getElementById('c-education').value.trim(),
+        healthStatus: document.getElementById('c-health-status').value,
+        health: document.getElementById('c-health').value.trim()
+    };
+    let children = DB.get('children');
+    if (id) {
+        children = children.map(c => c.id === child.id ? child : c);
+        toast('Child record updated!');
+    } else {
+        children.push(child);
+        toast('Child added successfully!');
     }
-    
-    // Show home by default
-    showSection('home');
-    
-    // Note: In a real system, add event listeners for buttons to handle CRUD operations via AJAX or form submissions.
+    DB.set('children', children);
+    closeModal('child-modal');
+    resetChildForm();
+    renderChildren();
+}
+
+function resetChildForm() {
+    ['c-name','c-age','c-arrival','c-education','c-health'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('c-gender').value = '';
+    document.getElementById('c-health-status').value = 'Good';
+    document.getElementById('child-edit-id').value = '';
+    document.getElementById('child-modal-title').textContent = 'Add Child';
+}
+
+function editChild(id) {
+    const children = DB.get('children');
+    const c = children.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('child-edit-id').value = c.id;
+    document.getElementById('c-name').value = c.name;
+    document.getElementById('c-age').value = c.age;
+    document.getElementById('c-gender').value = c.gender;
+    document.getElementById('c-arrival').value = c.arrival || '';
+    document.getElementById('c-education').value = c.education || '';
+    document.getElementById('c-health-status').value = c.healthStatus || 'Good';
+    document.getElementById('c-health').value = c.health || '';
+    document.getElementById('child-modal-title').textContent = 'Edit Child';
+    openModal('child-modal');
+}
+
+function deleteChild(id) {
+    if (!confirm('Delete this child record?')) return;
+    DB.set('children', DB.get('children').filter(c => c.id !== id));
+    toast('Child record deleted.', 'info');
+    renderChildren();
+}
+
+function renderChildren() {
+    const search = (document.getElementById('child-search').value || '').toLowerCase();
+    const filterGender = document.getElementById('child-filter-gender').value;
+    let list = DB.get('children').filter(c => {
+        const matchSearch = !search || c.name.toLowerCase().includes(search) || (c.gender||'').toLowerCase().includes(search) || (c.education||'').toLowerCase().includes(search);
+        const matchGender = !filterGender || c.gender === filterGender;
+        return matchSearch && matchGender;
+    });
+    const tbody = document.getElementById('children-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('children-empty').style.display = list.length ? 'none' : 'block';
+    list.forEach((c, i) => {
+        const statusBadge = c.healthStatus === 'Good' ? 'badge-success' : c.healthStatus === 'Fair' ? 'badge-warning' : 'badge-danger';
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(c.name)}</strong></td>
+            <td>${escapeHtml(String(c.age))}</td>
+            <td>${escapeHtml(c.gender)}</td>
+            <td>${escapeHtml(c.arrival) || '—'}</td>
+            <td>${escapeHtml(c.education) || '—'}</td>
+            <td><span class="badge ${statusBadge}">${escapeHtml(c.healthStatus)}</span></td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editChild(${c.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteChild(${c.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ===================== MEDICAL RECORDS =====================
+function saveMedical() {
+    const id = document.getElementById('medical-edit-id').value;
+    const child = document.getElementById('m-child').value.trim();
+    const date = document.getElementById('m-date').value;
+    const type = document.getElementById('m-type').value;
+    if (!child || !date) { toast('Please fill required fields (Child Name, Date)', 'error'); return; }
+    const record = {
+        id: id ? parseInt(id) : genId(),
+        child, date, type,
+        doctor: document.getElementById('m-doctor').value.trim(),
+        facility: document.getElementById('m-facility').value.trim(),
+        nextVisit: document.getElementById('m-next-visit').value,
+        diagnosis: document.getElementById('m-diagnosis').value.trim(),
+        medications: document.getElementById('m-medications').value.trim(),
+        allergies: document.getElementById('m-allergies').value.trim(),
+        notes: document.getElementById('m-notes').value.trim()
+    };
+    let records = DB.get('medical');
+    if (id) {
+        records = records.map(r => r.id === record.id ? record : r);
+        toast('Medical record updated!');
+    } else {
+        records.push(record);
+        toast('Medical record added!');
+    }
+    DB.set('medical', records);
+    closeModal('medical-modal');
+    resetMedicalForm();
+    renderMedical();
+}
+
+function resetMedicalForm() {
+    ['m-child','m-date','m-doctor','m-facility','m-next-visit','m-diagnosis','m-medications','m-allergies','m-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('m-type').value = 'General Checkup';
+    document.getElementById('medical-edit-id').value = '';
+    document.getElementById('medical-modal-title').textContent = 'Add Medical Record';
+}
+
+function editMedical(id) {
+    const records = DB.get('medical');
+    const r = records.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('medical-edit-id').value = r.id;
+    document.getElementById('m-child').value = r.child;
+    document.getElementById('m-date').value = r.date;
+    document.getElementById('m-type').value = r.type;
+    document.getElementById('m-doctor').value = r.doctor || '';
+    document.getElementById('m-facility').value = r.facility || '';
+    document.getElementById('m-next-visit').value = r.nextVisit || '';
+    document.getElementById('m-diagnosis').value = r.diagnosis || '';
+    document.getElementById('m-medications').value = r.medications || '';
+    document.getElementById('m-allergies').value = r.allergies || '';
+    document.getElementById('m-notes').value = r.notes || '';
+    document.getElementById('medical-modal-title').textContent = 'Edit Medical Record';
+    openModal('medical-modal');
+}
+
+function deleteMedical(id) {
+    if (!confirm('Delete this medical record?')) return;
+    DB.set('medical', DB.get('medical').filter(r => r.id !== id));
+    toast('Medical record deleted.', 'info');
+    renderMedical();
+}
+
+function renderMedical() {
+    const search = (document.getElementById('medical-search').value || '').toLowerCase();
+    const filterType = document.getElementById('medical-filter-type').value;
+    let list = DB.get('medical').filter(r => {
+        const matchSearch = !search || r.child.toLowerCase().includes(search) || (r.diagnosis||'').toLowerCase().includes(search) || (r.doctor||'').toLowerCase().includes(search);
+        const matchType = !filterType || r.type === filterType;
+        return matchSearch && matchType;
+    });
+    list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const tbody = document.getElementById('medical-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('medical-empty').style.display = list.length ? 'none' : 'block';
+    const today = new Date().toISOString().slice(0,10);
+    list.forEach((r, i) => {
+        const overdue = r.nextVisit && r.nextVisit < today;
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(r.child)}</strong></td>
+            <td>${escapeHtml(r.date)}</td>
+            <td><span class="badge badge-info">${escapeHtml(r.type)}</span></td>
+            <td>${escapeHtml(r.doctor) || '—'}</td>
+            <td>${escapeHtml(r.diagnosis) || '—'}</td>
+            <td>${escapeHtml(r.medications) || '—'}</td>
+            <td>${r.allergies ? `<span class="badge badge-danger">${escapeHtml(r.allergies)}</span>` : '—'}</td>
+            <td>${r.nextVisit ? `<span class="${overdue ? 'badge badge-danger' : 'badge badge-warning'}">${escapeHtml(r.nextVisit)}${overdue ? ' ⚠️' : ''}</span>` : '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editMedical(${r.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMedical(${r.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ===================== VACCINATIONS =====================
+function saveVaccine() {
+    const id = document.getElementById('vaccine-edit-id').value;
+    const child = document.getElementById('v-child').value.trim();
+    const name = document.getElementById('v-name').value.trim();
+    const date = document.getElementById('v-date').value;
+    if (!child || !name || !date) { toast('Please fill required fields', 'error'); return; }
+    const rec = {
+        id: id ? parseInt(id) : genId(),
+        child, name, date,
+        next: document.getElementById('v-next').value,
+        by: document.getElementById('v-by').value.trim(),
+        notes: document.getElementById('v-notes').value.trim()
+    };
+    let list = DB.get('vaccines');
+    if (id) {
+        list = list.map(r => r.id === rec.id ? rec : r);
+        toast('Vaccination record updated!');
+    } else {
+        list.push(rec);
+        toast('Vaccination record added!');
+    }
+    DB.set('vaccines', list);
+    closeModal('vaccine-modal');
+    resetVaccineForm();
+    renderVaccinations();
+}
+
+function resetVaccineForm() {
+    ['v-child','v-name','v-date','v-next','v-by','v-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('vaccine-edit-id').value = '';
+    document.getElementById('vaccine-modal-title').textContent = 'Add Vaccination Record';
+}
+
+function editVaccine(id) {
+    const list = DB.get('vaccines');
+    const r = list.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('vaccine-edit-id').value = r.id;
+    document.getElementById('v-child').value = r.child;
+    document.getElementById('v-name').value = r.name;
+    document.getElementById('v-date').value = r.date;
+    document.getElementById('v-next').value = r.next || '';
+    document.getElementById('v-by').value = r.by || '';
+    document.getElementById('v-notes').value = r.notes || '';
+    document.getElementById('vaccine-modal-title').textContent = 'Edit Vaccination Record';
+    openModal('vaccine-modal');
+}
+
+function deleteVaccine(id) {
+    if (!confirm('Delete this vaccination record?')) return;
+    DB.set('vaccines', DB.get('vaccines').filter(r => r.id !== id));
+    toast('Vaccination record deleted.', 'info');
+    renderVaccinations();
+}
+
+function renderVaccinations() {
+    const list = DB.get('vaccines');
+    const tbody = document.getElementById('vaccine-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('vaccine-empty').style.display = list.length ? 'none' : 'block';
+    const today = new Date().toISOString().slice(0,10);
+    list.forEach((r, i) => {
+        const overdue = r.next && r.next < today;
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(r.child)}</strong></td>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${escapeHtml(r.date)}</td>
+            <td>${r.next ? `<span class="${overdue ? 'badge badge-danger' : 'badge badge-warning'}">${escapeHtml(r.next)}${overdue ? ' ⚠️' : ''}</span>` : '—'}</td>
+            <td>${escapeHtml(r.by) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editVaccine(${r.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteVaccine(${r.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ===================== STAFF =====================
+function saveStaff() {
+    const id = document.getElementById('staff-edit-id').value;
+    const name = document.getElementById('s-name').value.trim();
+    const role = document.getElementById('s-role').value;
+    if (!name) { toast('Staff name is required', 'error'); return; }
+    const s = {
+        id: id ? parseInt(id) : genId(),
+        name, role,
+        contact: document.getElementById('s-contact').value.trim(),
+        email: document.getElementById('s-email').value.trim(),
+        salary: document.getElementById('s-salary').value,
+        join: document.getElementById('s-join').value,
+        notes: document.getElementById('s-notes').value.trim()
+    };
+    let list = DB.get('staff');
+    if (id) { list = list.map(x => x.id === s.id ? s : x); toast('Staff record updated!'); }
+    else { list.push(s); toast('Staff member added!'); }
+    DB.set('staff', list);
+    closeModal('staff-modal');
+    resetStaffForm();
+    renderStaff();
+}
+
+function resetStaffForm() {
+    ['s-name','s-contact','s-email','s-salary','s-join','s-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('s-role').value = 'Administrator';
+    document.getElementById('staff-edit-id').value = '';
+    document.getElementById('staff-modal-title').textContent = 'Add Staff Member';
+}
+
+function editStaff(id) {
+    const list = DB.get('staff');
+    const s = list.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('staff-edit-id').value = s.id;
+    document.getElementById('s-name').value = s.name;
+    document.getElementById('s-role').value = s.role;
+    document.getElementById('s-contact').value = s.contact || '';
+    document.getElementById('s-email').value = s.email || '';
+    document.getElementById('s-salary').value = s.salary || '';
+    document.getElementById('s-join').value = s.join || '';
+    document.getElementById('s-notes').value = s.notes || '';
+    document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
+    openModal('staff-modal');
+}
+
+function deleteStaff(id) {
+    if (!confirm('Delete this staff record?')) return;
+    DB.set('staff', DB.get('staff').filter(x => x.id !== id));
+    toast('Staff record deleted.', 'info');
+    renderStaff();
+}
+
+function renderStaff() {
+    const search = (document.getElementById('staff-search').value || '').toLowerCase();
+    let list = DB.get('staff').filter(s => !search || s.name.toLowerCase().includes(search) || (s.role||'').toLowerCase().includes(search) || (s.email||'').toLowerCase().includes(search));
+    const tbody = document.getElementById('staff-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('staff-empty').style.display = list.length ? 'none' : 'block';
+    list.forEach((s, i) => {
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(s.name)}</strong></td>
+            <td><span class="badge badge-info">${escapeHtml(s.role)}</span></td>
+            <td>${escapeHtml(s.contact) || '—'}</td>
+            <td>${escapeHtml(s.email) || '—'}</td>
+            <td>${s.salary ? '$' + parseFloat(s.salary).toLocaleString() : '—'}</td>
+            <td>${escapeHtml(s.join) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editStaff(${s.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteStaff(${s.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ===================== DONATIONS =====================
+function saveDonation() {
+    const id = document.getElementById('donation-edit-id').value;
+    const donor = document.getElementById('d-donor').value.trim();
+    const date = document.getElementById('d-date').value;
+    const type = document.getElementById('d-type').value;
+    if (!donor || !date) { toast('Donor name and date are required', 'error'); return; }
+    const d = {
+        id: id ? parseInt(id) : genId(),
+        donor, date, type,
+        amount: document.getElementById('d-amount').value || 0,
+        notes: document.getElementById('d-notes').value.trim()
+    };
+    let list = DB.get('donations');
+    if (id) { list = list.map(x => x.id === d.id ? d : x); toast('Donation updated!'); }
+    else { list.push(d); toast('Donation recorded!'); }
+    DB.set('donations', list);
+    closeModal('donation-modal');
+    resetDonationForm();
+    renderDonations();
+}
+
+function resetDonationForm() {
+    ['d-donor','d-amount','d-date','d-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('d-type').value = 'Cash';
+    document.getElementById('donation-edit-id').value = '';
+    document.getElementById('donation-modal-title').textContent = 'Record Donation';
+}
+
+function editDonation(id) {
+    const list = DB.get('donations');
+    const d = list.find(x => x.id === id);
+    if (!d) return;
+    document.getElementById('donation-edit-id').value = d.id;
+    document.getElementById('d-donor').value = d.donor;
+    document.getElementById('d-amount').value = d.amount;
+    document.getElementById('d-type').value = d.type;
+    document.getElementById('d-date').value = d.date;
+    document.getElementById('d-notes').value = d.notes || '';
+    document.getElementById('donation-modal-title').textContent = 'Edit Donation';
+    openModal('donation-modal');
+}
+
+function deleteDonation(id) {
+    if (!confirm('Delete this donation record?')) return;
+    DB.set('donations', DB.get('donations').filter(x => x.id !== id));
+    toast('Donation deleted.', 'info');
+    renderDonations();
+}
+
+function renderDonations() {
+    const search = (document.getElementById('donation-search').value || '').toLowerCase();
+    const filterType = document.getElementById('donation-filter-type').value;
+    let list = DB.get('donations').filter(d => {
+        const matchSearch = !search || d.donor.toLowerCase().includes(search) || (d.notes||'').toLowerCase().includes(search);
+        const matchType = !filterType || d.type === filterType;
+        return matchSearch && matchType;
+    });
+    list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const tbody = document.getElementById('donations-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('donations-empty').style.display = list.length ? 'none' : 'block';
+    let total = 0;
+    list.forEach((d, i) => {
+        const amt = parseFloat(d.amount) || 0;
+        if (d.type === 'Cash') total += amt;
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(d.donor)}</strong></td>
+            <td>${d.type === 'Cash' && d.amount ? '$' + parseFloat(d.amount).toLocaleString() : '—'}</td>
+            <td><span class="badge badge-success">${escapeHtml(d.type)}</span></td>
+            <td>${escapeHtml(d.date)}</td>
+            <td>${escapeHtml(d.notes) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editDonation(${d.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteDonation(${d.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+    document.getElementById('donation-total').textContent = list.length ? `Total Cash Donations: $${total.toLocaleString()}` : '';
+}
+
+// ===================== ADOPTIONS =====================
+function saveAdoption() {
+    const id = document.getElementById('adoption-edit-id').value;
+    const child = document.getElementById('a-child').value.trim();
+    const parent = document.getElementById('a-parent').value.trim();
+    if (!child || !parent) { toast('Child name and parent name are required', 'error'); return; }
+    const a = {
+        id: id ? parseInt(id) : genId(),
+        child, parent,
+        contact: document.getElementById('a-contact').value.trim(),
+        date: document.getElementById('a-date').value,
+        status: document.getElementById('a-status').value,
+        notes: document.getElementById('a-notes').value.trim()
+    };
+    let list = DB.get('adoptions');
+    if (id) { list = list.map(x => x.id === a.id ? a : x); toast('Adoption record updated!'); }
+    else { list.push(a); toast('Adoption record added!'); }
+    DB.set('adoptions', list);
+    closeModal('adoption-modal');
+    resetAdoptionForm();
+    renderAdoptions();
+}
+
+function resetAdoptionForm() {
+    ['a-child','a-parent','a-contact','a-date','a-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('a-status').value = 'Pending';
+    document.getElementById('adoption-edit-id').value = '';
+    document.getElementById('adoption-modal-title').textContent = 'Add Adoption Record';
+}
+
+function editAdoption(id) {
+    const list = DB.get('adoptions');
+    const a = list.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('adoption-edit-id').value = a.id;
+    document.getElementById('a-child').value = a.child;
+    document.getElementById('a-parent').value = a.parent;
+    document.getElementById('a-contact').value = a.contact || '';
+    document.getElementById('a-date').value = a.date || '';
+    document.getElementById('a-status').value = a.status;
+    document.getElementById('a-notes').value = a.notes || '';
+    document.getElementById('adoption-modal-title').textContent = 'Edit Adoption Record';
+    openModal('adoption-modal');
+}
+
+function deleteAdoption(id) {
+    if (!confirm('Delete this adoption record?')) return;
+    DB.set('adoptions', DB.get('adoptions').filter(x => x.id !== id));
+    toast('Adoption record deleted.', 'info');
+    renderAdoptions();
+}
+
+function renderAdoptions() {
+    const search = (document.getElementById('adoption-search').value || '').toLowerCase();
+    const filterStatus = document.getElementById('adoption-filter-status').value;
+    let list = DB.get('adoptions').filter(a => {
+        const matchSearch = !search || a.child.toLowerCase().includes(search) || a.parent.toLowerCase().includes(search);
+        const matchStatus = !filterStatus || a.status === filterStatus;
+        return matchSearch && matchStatus;
+    });
+    const tbody = document.getElementById('adoptions-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('adoptions-empty').style.display = list.length ? 'none' : 'block';
+    list.forEach((a, i) => {
+        const statusBadge = a.status === 'Completed' ? 'badge-success' : a.status === 'Approved' ? 'badge-info' : 'badge-warning';
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(a.child)}</strong></td>
+            <td>${escapeHtml(a.parent)}</td>
+            <td>${escapeHtml(a.contact) || '—'}</td>
+            <td>${escapeHtml(a.date) || '—'}</td>
+            <td><span class="badge ${statusBadge}">${escapeHtml(a.status)}</span></td>
+            <td>${escapeHtml(a.notes) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editAdoption(${a.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteAdoption(${a.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ===================== EVENTS =====================
+function saveEvent() {
+    const id = document.getElementById('event-edit-id').value;
+    const name = document.getElementById('e-name').value.trim();
+    const date = document.getElementById('e-date').value;
+    if (!name || !date) { toast('Event name and date are required', 'error'); return; }
+    const e = {
+        id: id ? parseInt(id) : genId(),
+        name, date,
+        time: document.getElementById('e-time').value,
+        participants: document.getElementById('e-participants').value.trim(),
+        description: document.getElementById('e-description').value.trim()
+    };
+    let list = DB.get('events');
+    if (id) { list = list.map(x => x.id === e.id ? e : x); toast('Event updated!'); }
+    else { list.push(e); toast('Event added!'); }
+    DB.set('events', list);
+    closeModal('event-modal');
+    resetEventForm();
+    renderEvents();
+}
+
+function resetEventForm() {
+    ['e-name','e-date','e-time','e-participants','e-description'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('event-edit-id').value = '';
+    document.getElementById('event-modal-title').textContent = 'Add Event';
+}
+
+function editEvent(id) {
+    const list = DB.get('events');
+    const e = list.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('event-edit-id').value = e.id;
+    document.getElementById('e-name').value = e.name;
+    document.getElementById('e-date').value = e.date;
+    document.getElementById('e-time').value = e.time || '';
+    document.getElementById('e-participants').value = e.participants || '';
+    document.getElementById('e-description').value = e.description || '';
+    document.getElementById('event-modal-title').textContent = 'Edit Event';
+    openModal('event-modal');
+}
+
+function deleteEvent(id) {
+    if (!confirm('Delete this event?')) return;
+    DB.set('events', DB.get('events').filter(x => x.id !== id));
+    toast('Event deleted.', 'info');
+    renderEvents();
+}
+
+function renderEvents() {
+    const search = (document.getElementById('event-search').value || '').toLowerCase();
+    let list = DB.get('events').filter(e => !search || e.name.toLowerCase().includes(search) || (e.description||'').toLowerCase().includes(search));
+    list.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const tbody = document.getElementById('events-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('events-empty').style.display = list.length ? 'none' : 'block';
+    const today = new Date().toISOString().slice(0,10);
+    list.forEach((e, i) => {
+        const upcoming = e.date >= today;
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(e.name)}</strong> ${upcoming ? '<span class="badge badge-info">Upcoming</span>' : ''}</td>
+            <td>${escapeHtml(e.date)}</td>
+            <td>${escapeHtml(e.time) || '—'}</td>
+            <td>${escapeHtml(e.participants) || '—'}</td>
+            <td>${escapeHtml(e.description) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editEvent(${e.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// ===================== INVENTORY =====================
+function saveInventory() {
+    const id = document.getElementById('inventory-edit-id').value;
+    const name = document.getElementById('i-name').value.trim();
+    const qty = document.getElementById('i-quantity').value;
+    if (!name || qty === '') { toast('Item name and quantity are required', 'error'); return; }
+    const item = {
+        id: id ? parseInt(id) : genId(),
+        name, quantity: parseFloat(qty),
+        unit: document.getElementById('i-unit').value.trim(),
+        category: document.getElementById('i-category').value,
+        threshold: document.getElementById('i-threshold').value || 0,
+        expiry: document.getElementById('i-expiry').value,
+        notes: document.getElementById('i-notes').value.trim()
+    };
+    let list = DB.get('inventory');
+    if (id) { list = list.map(x => x.id === item.id ? item : x); toast('Inventory item updated!'); }
+    else { list.push(item); toast('Inventory item added!'); }
+    DB.set('inventory', list);
+    closeModal('inventory-modal');
+    resetInventoryForm();
+    renderInventory();
+}
+
+function resetInventoryForm() {
+    ['i-name','i-quantity','i-unit','i-threshold','i-expiry','i-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('i-category').value = 'Food';
+    document.getElementById('inventory-edit-id').value = '';
+    document.getElementById('inventory-modal-title').textContent = 'Add Inventory Item';
+}
+
+function editInventory(id) {
+    const list = DB.get('inventory');
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+    document.getElementById('inventory-edit-id').value = item.id;
+    document.getElementById('i-name').value = item.name;
+    document.getElementById('i-quantity').value = item.quantity;
+    document.getElementById('i-unit').value = item.unit || '';
+    document.getElementById('i-category').value = item.category;
+    document.getElementById('i-threshold').value = item.threshold || '';
+    document.getElementById('i-expiry').value = item.expiry || '';
+    document.getElementById('i-notes').value = item.notes || '';
+    document.getElementById('inventory-modal-title').textContent = 'Edit Inventory Item';
+    openModal('inventory-modal');
+}
+
+function deleteInventory(id) {
+    if (!confirm('Delete this inventory item?')) return;
+    DB.set('inventory', DB.get('inventory').filter(x => x.id !== id));
+    toast('Inventory item deleted.', 'info');
+    renderInventory();
+}
+
+function renderInventory() {
+    const search = (document.getElementById('inventory-search').value || '').toLowerCase();
+    const filterCat = document.getElementById('inventory-filter-cat').value;
+    let list = DB.get('inventory').filter(item => {
+        const matchSearch = !search || item.name.toLowerCase().includes(search) || (item.category||'').toLowerCase().includes(search);
+        const matchCat = !filterCat || item.category === filterCat;
+        return matchSearch && matchCat;
+    });
+    const tbody = document.getElementById('inventory-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('inventory-empty').style.display = list.length ? 'none' : 'block';
+    const today = new Date().toISOString().slice(0,10);
+    let lowStockAlerts = [];
+    list.forEach((item, i) => {
+        const isLow = item.threshold && item.quantity <= parseFloat(item.threshold);
+        const isExpired = item.expiry && item.expiry < today;
+        const EXPIRY_WARNING_DAYS = 7;
+        const isExpiring = item.expiry && item.expiry >= today && item.expiry <= new Date(Date.now() + EXPIRY_WARNING_DAYS*24*3600*1000).toISOString().slice(0,10);
+        if (isLow) lowStockAlerts.push(item.name);
+        let statusBadge = 'badge-success';
+        let statusText = 'OK';
+        if (isExpired) { statusBadge = 'badge-danger'; statusText = 'Expired'; }
+        else if (isLow) { statusBadge = 'badge-warning'; statusText = 'Low Stock'; }
+        else if (isExpiring) { statusBadge = 'badge-warning'; statusText = 'Expiring Soon'; }
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(item.name)}</strong></td>
+            <td>${escapeHtml(String(item.quantity))} ${escapeHtml(item.unit) || ''}</td>
+            <td><span class="badge badge-secondary">${escapeHtml(item.category)}</span></td>
+            <td>${escapeHtml(item.expiry) || '—'}</td>
+            <td><span class="badge ${statusBadge}">${statusText}</span></td>
+            <td>${escapeHtml(item.notes) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editInventory(${item.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteInventory(${item.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+    const alertEl = document.getElementById('inventory-alerts');
+    if (lowStockAlerts.length) {
+        alertEl.innerHTML = `<div class="alert alert-warning">⚠️ Low stock alert: <strong>${lowStockAlerts.join(', ')}</strong></div>`;
+    } else {
+        alertEl.innerHTML = '';
+    }
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+    const children = DB.get('children');
+    const staff = DB.get('staff');
+    const donations = DB.get('donations');
+    const adoptions = DB.get('adoptions');
+    const events = DB.get('events');
+    const inventory = DB.get('inventory');
+    const medical = DB.get('medical');
+    const vaccines = DB.get('vaccines');
+    const today = new Date().toISOString().slice(0,10);
+
+    const cashDonations = donations.filter(d => d.type === 'Cash').reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+    const pendingAdoptions = adoptions.filter(a => a.status === 'Pending').length;
+    const upcomingEvents = events.filter(e => e.date >= today).length;
+    const lowStock = inventory.filter(i => i.threshold && i.quantity <= parseFloat(i.threshold)).length;
+
+    document.getElementById('stats-grid').innerHTML = `
+        <div class="stat-card"><div class="stat-number">${children.length}</div><div class="stat-label">Total Children</div></div>
+        <div class="stat-card green"><div class="stat-number">${staff.length}</div><div class="stat-label">Staff Members</div></div>
+        <div class="stat-card orange"><div class="stat-number">$${cashDonations.toLocaleString()}</div><div class="stat-label">Total Cash Donations</div></div>
+        <div class="stat-card red"><div class="stat-number">${pendingAdoptions}</div><div class="stat-label">Pending Adoptions</div></div>
+        <div class="stat-card purple"><div class="stat-number">${upcomingEvents}</div><div class="stat-label">Upcoming Events</div></div>
+        <div class="stat-card teal"><div class="stat-number">${medical.length}</div><div class="stat-label">Medical Records</div></div>
+        <div class="stat-card pink"><div class="stat-number">${vaccines.length}</div><div class="stat-label">Vaccinations</div></div>
+        <div class="stat-card ${lowStock ? 'red' : 'green'}"><div class="stat-number">${lowStock}</div><div class="stat-label">Low Stock Alerts</div></div>
+    `;
+
+    // Gender chart
+    const male = children.filter(c => c.gender === 'Male').length;
+    const female = children.filter(c => c.gender === 'Female').length;
+    const other = children.filter(c => c.gender === 'Other').length;
+    const total = children.length || 1;
+    document.getElementById('gender-chart').innerHTML = `
+        <div class="bar-row"><div class="bar-label">Male</div><div class="bar-track"><div class="bar-fill" style="width:${(male/total*100).toFixed(1)}%; background:#007bff">${male}</div></div></div>
+        <div class="bar-row"><div class="bar-label">Female</div><div class="bar-track"><div class="bar-fill" style="width:${(female/total*100).toFixed(1)}%; background:#e83e8c">${female}</div></div></div>
+        <div class="bar-row"><div class="bar-label">Other</div><div class="bar-track"><div class="bar-fill" style="width:${(other/total*100).toFixed(1)}%; background:#6c757d">${other}</div></div></div>
+    `;
+
+    // Donation type chart
+    const cash = donations.filter(d => d.type === 'Cash').length;
+    const goods = donations.filter(d => d.type === 'Goods').length;
+    const services = donations.filter(d => d.type === 'Services').length;
+    const dtotal = donations.length || 1;
+    document.getElementById('donation-chart').innerHTML = `
+        <div class="bar-row"><div class="bar-label">Cash</div><div class="bar-track"><div class="bar-fill" style="width:${(cash/dtotal*100).toFixed(1)}%; background:#28a745">${cash}</div></div></div>
+        <div class="bar-row"><div class="bar-label">Goods</div><div class="bar-track"><div class="bar-fill" style="width:${(goods/dtotal*100).toFixed(1)}%; background:#fd7e14">${goods}</div></div></div>
+        <div class="bar-row"><div class="bar-label">Services</div><div class="bar-track"><div class="bar-fill" style="width:${(services/dtotal*100).toFixed(1)}%; background:#17a2b8">${services}</div></div></div>
+    `;
+
+    // Dashboard alerts
+    let alerts = '';
+    if (lowStock > 0) alerts += `<div class="alert alert-warning">⚠️ ${lowStock} inventory item(s) are low on stock.</div>`;
+    const overdueVisits = DB.get('medical').filter(r => r.nextVisit && r.nextVisit < today);
+    if (overdueVisits.length) alerts += `<div class="alert alert-danger">🏥 ${overdueVisits.length} overdue medical follow-up(s) need attention.</div>`;
+    const overdueVaccines = DB.get('vaccines').filter(v => v.next && v.next < today);
+    if (overdueVaccines.length) alerts += `<div class="alert alert-danger">💉 ${overdueVaccines.length} overdue vaccination(s) need attention.</div>`;
+    if (upcomingEvents > 0) alerts += `<div class="alert alert-info">📅 ${upcomingEvents} upcoming event(s) scheduled.</div>`;
+    document.getElementById('dashboard-alerts').innerHTML = alerts;
+}
+
+function renderHomeAlerts() {
+    const today = new Date().toISOString().slice(0,10);
+    const inventory = DB.get('inventory');
+    const lowStock = inventory.filter(i => i.threshold && i.quantity <= parseFloat(i.threshold));
+    const overdueVisits = DB.get('medical').filter(r => r.nextVisit && r.nextVisit < today);
+    const overdueVax = DB.get('vaccines').filter(v => v.next && v.next < today);
+    let alerts = '';
+    if (lowStock.length) alerts += `<div class="alert alert-warning">⚠️ Low stock: <strong>${lowStock.map(i=>i.name).join(', ')}</strong></div>`;
+    if (overdueVisits.length) alerts += `<div class="alert alert-danger">🏥 ${overdueVisits.length} overdue medical follow-up(s).</div>`;
+    if (overdueVax.length) alerts += `<div class="alert alert-danger">💉 ${overdueVax.length} overdue vaccination(s).</div>`;
+    document.getElementById('home-alerts').innerHTML = alerts;
+}
+
+// ===================== REPORTS =====================
+function renderReports() {
+    document.getElementById('report-output').innerHTML = '<p style="color:#888;">Click a report button above to generate it.</p>';
+}
+
+function printReport(type) {
+    let html = '';
+    const settings = DB.getObj('settings', {});
+    const orgName = settings.orgName || 'Orphanage Management System';
+    const now = new Date().toLocaleString();
+    const header = `<h2>${orgName}</h2><p>Generated: ${now}</p><hr>`;
+
+    if (type === 'children') {
+        const list = DB.get('children');
+        html = header + `<h3>Children Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Name</th><th>Age</th><th>Gender</th><th>Arrival</th><th>Education</th><th>Health</th></tr>`;
+        list.forEach((c, i) => { html += `<tr><td>${i+1}</td><td>${c.name}</td><td>${c.age}</td><td>${c.gender}</td><td>${c.arrival||''}</td><td>${c.education||''}</td><td>${c.healthStatus||''}</td></tr>`; });
+        html += '</table>';
+    } else if (type === 'medical') {
+        const list = DB.get('medical');
+        html = header + `<h3>Medical Records Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Child</th><th>Date</th><th>Type</th><th>Doctor</th><th>Diagnosis</th><th>Medications</th><th>Allergies</th></tr>`;
+        list.forEach((r, i) => { html += `<tr><td>${i+1}</td><td>${r.child}</td><td>${r.date}</td><td>${r.type}</td><td>${r.doctor||''}</td><td>${r.diagnosis||''}</td><td>${r.medications||''}</td><td>${r.allergies||''}</td></tr>`; });
+        html += '</table>';
+    } else if (type === 'financial') {
+        const list = DB.get('donations');
+        const total = list.filter(d => d.type === 'Cash').reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+        html = header + `<h3>Financial Report (${list.length} donations)</h3><p><strong>Total Cash Received: $${total.toLocaleString()}</strong></p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Donor</th><th>Amount</th><th>Type</th><th>Date</th></tr>`;
+        list.forEach((d, i) => { html += `<tr><td>${i+1}</td><td>${d.donor}</td><td>${d.type==='Cash'?'$'+parseFloat(d.amount).toLocaleString():''}</td><td>${d.type}</td><td>${d.date}</td></tr>`; });
+        html += '</table>';
+    } else if (type === 'adoptions') {
+        const list = DB.get('adoptions');
+        html = header + `<h3>Adoption Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Child</th><th>Parent</th><th>Date</th><th>Status</th></tr>`;
+        list.forEach((a, i) => { html += `<tr><td>${i+1}</td><td>${a.child}</td><td>${a.parent}</td><td>${a.date||''}</td><td>${a.status}</td></tr>`; });
+        html += '</table>';
+    } else if (type === 'inventory') {
+        const list = DB.get('inventory');
+        html = header + `<h3>Inventory Report (${list.length} items)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Item</th><th>Quantity</th><th>Unit</th><th>Category</th><th>Expiry</th></tr>`;
+        list.forEach((item, i) => { html += `<tr><td>${i+1}</td><td>${item.name}</td><td>${item.quantity}</td><td>${item.unit||''}</td><td>${item.category}</td><td>${item.expiry||'N/A'}</td></tr>`; });
+        html += '</table>';
+    }
+    document.getElementById('report-output').innerHTML = html;
+    // Print
+    const win = window.open('', '_blank');
+    win.document.write('<html><head><title>Report</title><style>body{font-family:Arial;padding:20px;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #ccc;padding:8px;}</style></head><body>' + html + '</body></html>');
+    win.document.close();
+    win.print();
+}
+
+function exportData() {
+    const data = {
+        children: DB.get('children'),
+        medical: DB.get('medical'),
+        vaccines: DB.get('vaccines'),
+        staff: DB.get('staff'),
+        donations: DB.get('donations'),
+        adoptions: DB.get('adoptions'),
+        events: DB.get('events'),
+        inventory: DB.get('inventory'),
+        settings: DB.getObj('settings', {})
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'orphanage_data_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Data exported successfully!', 'success');
+}
+
+// ===================== SETTINGS =====================
+function saveSettings() {
+    const settings = {
+        orgName: document.getElementById('org-name').value.trim(),
+        orgAddress: document.getElementById('org-address').value.trim(),
+        orgContact: document.getElementById('org-contact').value.trim(),
+        orgEmail: document.getElementById('org-email').value.trim(),
+        backupFrequency: document.getElementById('backup-frequency').value
+    };
+    DB.setObj('settings', settings);
+    toast('Settings saved!');
+}
+
+function loadSettings() {
+    const s = DB.getObj('settings', {});
+    document.getElementById('org-name').value = s.orgName || '';
+    document.getElementById('org-address').value = s.orgAddress || '';
+    document.getElementById('org-contact').value = s.orgContact || '';
+    document.getElementById('org-email').value = s.orgEmail || '';
+    document.getElementById('backup-frequency').value = s.backupFrequency || 'Daily';
+}
+
+function clearAllData() {
+    if (!confirm('This will permanently delete ALL records. Are you sure?')) return;
+    if (!confirm('This action cannot be undone. Confirm deletion of all data?')) return;
+    ['children','medical','vaccines','staff','donations','adoptions','events','inventory'].forEach(k => DB.set(k, []));
+    toast('All data has been cleared.', 'info');
+}
+
+// ===================== CLOCK =====================
+function updateClock() {
+    const now = new Date();
+    document.getElementById('header-clock').textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ===================== INIT =====================
+showSection('home');
 </script>
 
 </body>
