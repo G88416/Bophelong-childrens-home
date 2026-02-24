@@ -249,16 +249,72 @@
             .stats-grid { grid-template-columns: 1fr 1fr; }
             header { flex-direction: column; text-align: center; gap: 6px; }
         }
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #login-overlay.hidden { display: none; }
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px 36px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+        .login-logo { font-size: 3rem; margin-bottom: 10px; }
+        .login-card h2 { color: #007bff; margin-bottom: 6px; font-size: 1.5rem; }
+        .login-card .subtitle { color: #888; margin-bottom: 24px; font-size: 0.88rem; }
+        .login-error { color: #dc3545; font-size: 0.85rem; margin-bottom: 10px; background: #f8d7da; padding: 8px 12px; border-radius: 6px; text-align: left; display: none; }
+        .login-card .form-hint { font-size: 0.78rem; color: #aaa; margin-top: 16px; line-height: 1.5; }
+        .btn-block { width: 100%; }
+        /* Header user */
+        #header-user { font-size: 0.82rem; opacity: 0.9; }
+        .btn-logout { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 5px 11px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-left: 8px; }
+        .btn-logout:hover { background: rgba(255,255,255,0.28); }
+        /* Finance */
+        .stat-card.finance-income { border-left-color: #28a745; }
+        .stat-card.finance-income .stat-number { color: #28a745; }
+        .stat-card.finance-expense { border-left-color: #dc3545; }
+        .stat-card.finance-expense .stat-number { color: #dc3545; }
+        .stat-card.finance-balance { border-left-color: #20c997; }
     </style>
 </head>
 <body>
+
+<!-- ==================== LOGIN OVERLAY ==================== -->
+<div id="login-overlay">
+    <div class="login-card">
+        <div class="login-logo">🏠</div>
+        <h2>Orphanage Management</h2>
+        <p class="subtitle">Sign in to access the system</p>
+        <div id="login-error" class="login-error"></div>
+        <input type="email" id="login-email" placeholder="Email address" style="margin-bottom:12px;" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="password" id="login-password" placeholder="Password" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')doLogin()">
+        <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
+        <p class="form-hint">Configure credentials in Settings → User Accounts.<br>
+            Default: admin@orphanage.local / Admin@123</p>
+    </div>
+</div>
 
 <header>
     <div>
         <h1>🏠 Orphanage Management System</h1>
         <p>A comprehensive system to manage orphanage operations efficiently.</p>
     </div>
-    <div class="header-right" id="header-clock"></div>
+    <div class="header-right">
+        <div id="header-clock"></div>
+        <div style="margin-top:4px; display:flex; align-items:center; justify-content:flex-end; gap:4px;">
+            <span id="header-user"></span>
+            <button class="btn-logout" onclick="doLogout()">🚪 Logout</button>
+        </div>
+    </div>
 </header>
 
 <nav id="main-nav">
@@ -272,6 +328,7 @@
     <a href="#" onclick="showSection('events')" data-section="events">📅 Events</a>
     <a href="#" onclick="showSection('inventory')" data-section="inventory">📦 Inventory</a>
     <a href="#" onclick="showSection('reports')" data-section="reports">📈 Reports</a>
+    <a href="#" onclick="showSection('finance')" data-section="finance">💵 Finance</a>
     <a href="#" onclick="showSection('settings')" data-section="settings">⚙️ Settings</a>
 </nav>
 
@@ -297,6 +354,7 @@
                 <div class="quick-card" onclick="showSection('events')"><div class="quick-card-icon">📅</div><div class="quick-card-label">Events</div></div>
                 <div class="quick-card" onclick="showSection('inventory')"><div class="quick-card-icon">📦</div><div class="quick-card-label">Inventory</div></div>
                 <div class="quick-card" onclick="showSection('reports')"><div class="quick-card-icon">📈</div><div class="quick-card-label">Reports</div></div>
+                <div class="quick-card" onclick="showSection('finance')"><div class="quick-card-icon">💵</div><div class="quick-card-label">Finance</div></div>
                 <div class="quick-card" onclick="showSection('settings')"><div class="quick-card-icon">⚙️</div><div class="quick-card-label">Settings</div></div>
             </div>
         </div>
@@ -496,6 +554,56 @@
         </div>
     </div>
 
+    <!-- Finance Management Section -->
+    <div id="finance" class="section">
+        <div class="stats-grid" id="finance-stats-grid"></div>
+        <div class="card">
+            <h2>💵 Income Records</h2>
+            <button class="btn btn-success" onclick="openModal('income-modal')">+ Add Income</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="income-search" placeholder="🔍 Search income..." oninput="renderFinance()">
+                <select id="income-filter-cat" onchange="renderFinance()">
+                    <option value="">All Categories</option>
+                    <option>Donation</option><option>Grant</option><option>Fundraising</option>
+                    <option>Government Support</option><option>Other</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Date</th><th>Category</th><th>Amount</th><th>Payer / Source</th><th>Description</th><th>Reference</th><th>Actions</th></tr></thead>
+                    <tbody id="income-tbody"></tbody>
+                </table>
+            </div>
+            <p id="income-empty" style="color:#888; padding:12px; display:none;">No income records found.</p>
+            <div id="income-total" style="text-align:right; font-weight:700; margin-top:10px; color:#28a745;"></div>
+        </div>
+        <div class="card">
+            <h2>💸 Expense Records</h2>
+            <button class="btn btn-danger" onclick="openModal('expense-modal')">+ Add Expense</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="expense-search" placeholder="🔍 Search expenses..." oninput="renderFinance()">
+                <select id="expense-filter-cat" onchange="renderFinance()">
+                    <option value="">All Categories</option>
+                    <option>Salaries</option><option>Utilities</option><option>Food &amp; Nutrition</option>
+                    <option>Medical Supplies</option><option>Maintenance</option><option>Events</option>
+                    <option>Transportation</option><option>Other</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Date</th><th>Category</th><th>Amount</th><th>Payee / Vendor</th><th>Description</th><th>Reference</th><th>Actions</th></tr></thead>
+                    <tbody id="expense-tbody"></tbody>
+                </table>
+            </div>
+            <p id="expense-empty" style="color:#888; padding:12px; display:none;">No expense records found.</p>
+            <div id="expense-total" style="text-align:right; font-weight:700; margin-top:10px; color:#dc3545;"></div>
+        </div>
+        <div class="card">
+            <h3>📊 Expenses by Category</h3>
+            <div class="bar-chart" id="finance-chart"></div>
+        </div>
+    </div>
+
     <!-- Settings Section -->
     <div id="settings" class="section">
         <div class="card">
@@ -526,7 +634,20 @@
             </div>
             <div style="margin-top:14px; display:flex; gap:10px;">
                 <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
-                <button class="btn btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+                <button class="btn btn-danger admin-only" onclick="clearAllData()">🗑️ Clear All Data</button>
+            </div>
+        </div>
+        <div class="card">
+            <h3>🔐 User Accounts <small style="color:#888; font-weight:400; font-size:0.8rem;">(Offline / Demo Mode)</small></h3>
+            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Configure login credentials used when Firebase Authentication is not active. For production, create users in Firebase Auth and set their role in Firestore (<code>users/{uid}.role</code>).</p>
+            <div class="form-grid">
+                <div><label>Admin Email</label><input type="email" id="admin-email" placeholder="admin@orphanage.local"></div>
+                <div><label>Admin Password</label><input type="password" id="admin-pass" placeholder="Leave blank to keep current"></div>
+                <div><label>Manager Email</label><input type="email" id="manager-email" placeholder="manager@orphanage.local"></div>
+                <div><label>Manager Password</label><input type="password" id="manager-pass" placeholder="Leave blank to keep current"></div>
+            </div>
+            <div style="margin-top:14px;">
+                <button class="btn btn-primary" onclick="saveUserAccounts()">💾 Save User Accounts</button>
             </div>
         </div>
     </div>
@@ -720,6 +841,57 @@
     </div>
 </div>
 
+<!-- Income Modal -->
+<div class="modal-overlay" id="income-modal">
+    <div class="modal">
+        <h3 id="income-modal-title">Add Income Record</h3>
+        <input type="hidden" id="income-edit-id">
+        <div class="form-grid">
+            <div><label>Date *</label><input type="date" id="inc-date"></div>
+            <div><label>Category *</label>
+                <select id="inc-category">
+                    <option>Donation</option><option>Grant</option><option>Fundraising</option>
+                    <option>Government Support</option><option>Other</option>
+                </select>
+            </div>
+            <div><label>Amount *</label><input type="number" id="inc-amount" placeholder="Amount" min="0" step="0.01"></div>
+            <div><label>Payer / Source</label><input type="text" id="inc-payer" placeholder="Who paid?"></div>
+            <div><label>Reference No.</label><input type="text" id="inc-reference" placeholder="e.g., INV-2024-001"></div>
+            <div class="full-width"><label>Description</label><textarea id="inc-description" placeholder="Income details..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('income-modal')">Cancel</button>
+            <button class="btn btn-success" onclick="saveIncome()">Save Income</button>
+        </div>
+    </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-overlay" id="expense-modal">
+    <div class="modal">
+        <h3 id="expense-modal-title">Add Expense Record</h3>
+        <input type="hidden" id="expense-edit-id">
+        <div class="form-grid">
+            <div><label>Date *</label><input type="date" id="exp-date"></div>
+            <div><label>Category *</label>
+                <select id="exp-category">
+                    <option>Salaries</option><option>Utilities</option><option>Food &amp; Nutrition</option>
+                    <option>Medical Supplies</option><option>Maintenance</option><option>Events</option>
+                    <option>Transportation</option><option>Other</option>
+                </select>
+            </div>
+            <div><label>Amount *</label><input type="number" id="exp-amount" placeholder="Amount" min="0" step="0.01"></div>
+            <div><label>Payee / Vendor</label><input type="text" id="exp-payee" placeholder="Who was paid?"></div>
+            <div><label>Reference No.</label><input type="text" id="exp-reference" placeholder="e.g., EXP-2024-001"></div>
+            <div class="full-width"><label>Description</label><textarea id="exp-description" placeholder="Expense details..."></textarea></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('expense-modal')">Cancel</button>
+            <button class="btn btn-danger" onclick="saveExpense()">Save Expense</button>
+        </div>
+    </div>
+</div>
+
 <footer>
     <p>&copy; 2026 Orphanage Management System. Data synced with Firebase Firestore.</p>
 </footer>
@@ -731,6 +903,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <script>
+// Collections managed by this app (declared first so Firebase init can reference it)
+const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
+
 // ===================== FIREBASE INITIALISATION =====================
 // Replace the placeholder values below with your project's Firebase config
 // (Firebase console → Project settings → Your apps → SDK setup and configuration)
@@ -745,16 +920,17 @@ const firebaseConfig = {
 
 let firestoreDB = null;
 let firebaseStorage = null;
+let firebaseAuth = null;
 try {
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     firestoreDB = firebase.firestore();
     firebaseStorage = firebase.storage();
+    firebaseAuth = firebase.auth();
 
     // Load each collection from Firestore into localStorage on startup
-    const collections = ['children','medical','vaccines','staff','donations','adoptions','events','inventory'];
-    collections.forEach(col => {
+    COLLECTIONS.forEach(col => {
         firestoreDB.collection(col).get().then(snapshot => {
             if (!snapshot.empty) {
                 const items = snapshot.docs.map(d => d.data());
@@ -808,7 +984,143 @@ const DB = {
 
 function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
 
-// ===================== NAVIGATION =====================
+// ===================== AUTH =====================
+let currentUser = null;
+let currentRole = null; // 'admin' or 'manager'
+
+// SHA-256 of default offline passwords (Admin@123 / Manager@123)
+const DEFAULT_ADMIN_HASH   = 'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7';
+const DEFAULT_MANAGER_HASH = 'e8392925a98c9c22795d1fc5d0dfee5b9a6943f6b768ec5a2a0c077e5ed119cf';
+const ALLOWED_ROLES = ['admin', 'manager'];
+
+async function hashPassword(pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function initAuth() {
+    if (firebaseAuth) {
+        firebaseAuth.onAuthStateChanged(function(user) {
+            if (user) {
+                currentUser = user;
+                if (firestoreDB) {
+                    firestoreDB.collection('users').doc(user.uid).get().then(doc => {
+                        currentRole = doc.exists ? (doc.data().role || 'manager') : 'manager';
+                        onLoginSuccess();
+                    }).catch(() => { currentRole = 'manager'; onLoginSuccess(); });
+                } else {
+                    currentRole = 'manager';
+                    onLoginSuccess();
+                }
+            } else {
+                checkOfflineSession();
+            }
+        });
+    } else {
+        checkOfflineSession();
+    }
+}
+
+function checkOfflineSession() {
+    const raw = sessionStorage.getItem('oms_session');
+    if (raw) {
+        try {
+            const session = JSON.parse(raw);
+            const role = session.role;
+            if (ALLOWED_ROLES.includes(role)) {
+                currentUser = session;
+                currentRole = role;
+                onLoginSuccess();
+                return;
+            }
+        } catch(e) {}
+        sessionStorage.removeItem('oms_session'); // discard invalid session
+    }
+    document.getElementById('login-overlay').classList.remove('hidden');
+}
+
+function onLoginSuccess() {
+    document.getElementById('login-overlay').classList.add('hidden');
+    applyRoleBasedUI();
+    updateHeaderUser();
+    showSection('home');
+}
+
+function applyRoleBasedUI() {
+    if (currentRole !== 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
+}
+
+function updateHeaderUser() {
+    const name = currentUser ? (currentUser.displayName || currentUser.email || currentUser.name || 'User') : 'User';
+    document.getElementById('header-user').textContent = `👤 ${name} (${currentRole || 'user'})`;
+}
+
+async function doLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    const btnEl = document.getElementById('login-btn');
+    errEl.style.display = 'none';
+    if (!email || !password) {
+        errEl.textContent = 'Please enter your email and password.';
+        errEl.style.display = 'block';
+        return;
+    }
+    btnEl.disabled = true;
+    btnEl.textContent = 'Signing in…';
+
+    if (firebaseAuth) {
+        try {
+            await firebaseAuth.signInWithEmailAndPassword(email, password);
+            return; // onAuthStateChanged handles success
+        } catch(e) {
+            if (['auth/wrong-password','auth/user-not-found','auth/invalid-credential','auth/invalid-email'].includes(e.code)) {
+                errEl.textContent = 'Invalid email or password.';
+                errEl.style.display = 'block';
+                btnEl.disabled = false;
+                btnEl.textContent = 'Sign In';
+                return;
+            }
+            // Other error (e.g. network/config) – fall through to offline auth
+        }
+    }
+
+    // Offline / demo auth
+    const settings = DB.getObj('settings', {});
+    const adminEmail   = (settings.adminEmail || 'admin@orphanage.local').toLowerCase();
+    const adminHash    = settings.adminPassHash  || DEFAULT_ADMIN_HASH;
+    const mgrEmail     = (settings.managerEmail || 'manager@orphanage.local').toLowerCase();
+    const mgrHash      = settings.managerPassHash || DEFAULT_MANAGER_HASH;
+    const inputHash    = await hashPassword(password);
+    let role = null;
+    if (email.toLowerCase() === adminEmail && inputHash === adminHash) role = 'admin';
+    else if (email.toLowerCase() === mgrEmail && inputHash === mgrHash) role = 'manager';
+    btnEl.disabled = false;
+    btnEl.textContent = 'Sign In';
+    if (role) {
+        const session = { email, name: email.split('@')[0], role };
+        sessionStorage.setItem('oms_session', JSON.stringify(session));
+        currentUser = session;
+        currentRole = role;
+        onLoginSuccess();
+    } else {
+        errEl.textContent = 'Invalid email or password.';
+        errEl.style.display = 'block';
+    }
+}
+
+function doLogout() {
+    sessionStorage.removeItem('oms_session');
+    currentUser = null;
+    currentRole = null;
+    if (firebaseAuth) { try { firebaseAuth.signOut(); } catch(e) {} }
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('header-user').textContent = '';
+}
+
+
 function showSection(id) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('#main-nav a').forEach(a => a.classList.remove('active'));
@@ -826,6 +1138,7 @@ function showSection(id) {
         adoptions: [renderAdoptions],
         events: [renderEvents],
         inventory: [renderInventory],
+        finance: [renderFinance],
         reports: [renderReports],
         settings: [loadSettings],
         home: [renderHomeAlerts]
@@ -1674,6 +1987,8 @@ function exportData() {
         adoptions: DB.get('adoptions'),
         events: DB.get('events'),
         inventory: DB.get('inventory'),
+        income: DB.get('income'),
+        expenses: DB.get('expenses'),
         settings: DB.getObj('settings', {})
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1706,13 +2021,226 @@ function loadSettings() {
     document.getElementById('org-contact').value = s.orgContact || '';
     document.getElementById('org-email').value = s.orgEmail || '';
     document.getElementById('backup-frequency').value = s.backupFrequency || 'Daily';
+    loadUserAccounts();
+}
+
+function loadUserAccounts() {
+    const s = DB.getObj('settings', {});
+    document.getElementById('admin-email').value = s.adminEmail || 'admin@orphanage.local';
+    document.getElementById('manager-email').value = s.managerEmail || 'manager@orphanage.local';
+    // Password fields intentionally left blank
+}
+
+async function saveUserAccounts() {
+    const settings = DB.getObj('settings', {});
+    const adminEmail = document.getElementById('admin-email').value.trim();
+    const adminPass  = document.getElementById('admin-pass').value;
+    const mgrEmail   = document.getElementById('manager-email').value.trim();
+    const mgrPass    = document.getElementById('manager-pass').value;
+    if (adminEmail) settings.adminEmail = adminEmail;
+    if (adminPass)  settings.adminPassHash  = await hashPassword(adminPass);
+    if (mgrEmail)   settings.managerEmail   = mgrEmail;
+    if (mgrPass)    settings.managerPassHash = await hashPassword(mgrPass);
+    DB.setObj('settings', settings);
+    document.getElementById('admin-pass').value = '';
+    document.getElementById('manager-pass').value = '';
+    toast('User accounts saved!');
 }
 
 function clearAllData() {
     if (!confirm('This will permanently delete ALL records. Are you sure?')) return;
     if (!confirm('This action cannot be undone. Confirm deletion of all data?')) return;
-    ['children','medical','vaccines','staff','donations','adoptions','events','inventory'].forEach(k => DB.set(k, []));
+    COLLECTIONS.forEach(k => DB.set(k, []));
     toast('All data has been cleared.', 'info');
+}
+
+// ===================== FINANCE =====================
+function saveIncome() {
+    const id = document.getElementById('income-edit-id').value;
+    const date = document.getElementById('inc-date').value;
+    const amount = document.getElementById('inc-amount').value;
+    if (!date || !amount) { toast('Date and amount are required', 'error'); return; }
+    const rec = {
+        id: id ? parseInt(id) : genId(),
+        date, amount: parseFloat(amount),
+        category: document.getElementById('inc-category').value,
+        payer: document.getElementById('inc-payer').value.trim(),
+        reference: document.getElementById('inc-reference').value.trim(),
+        description: document.getElementById('inc-description').value.trim()
+    };
+    let list = DB.get('income');
+    if (id) { list = list.map(x => x.id === rec.id ? rec : x); toast('Income record updated!'); }
+    else { list.push(rec); toast('Income record added!'); }
+    DB.set('income', list);
+    closeModal('income-modal');
+    resetIncomeForm();
+    renderFinance();
+}
+
+function resetIncomeForm() {
+    ['inc-date','inc-amount','inc-payer','inc-reference','inc-description'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('inc-category').value = 'Donation';
+    document.getElementById('income-edit-id').value = '';
+    document.getElementById('income-modal-title').textContent = 'Add Income Record';
+}
+
+function editIncome(id) {
+    const r = DB.get('income').find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('income-edit-id').value = r.id;
+    document.getElementById('inc-date').value = r.date;
+    document.getElementById('inc-category').value = r.category;
+    document.getElementById('inc-amount').value = r.amount;
+    document.getElementById('inc-payer').value = r.payer || '';
+    document.getElementById('inc-reference').value = r.reference || '';
+    document.getElementById('inc-description').value = r.description || '';
+    document.getElementById('income-modal-title').textContent = 'Edit Income Record';
+    openModal('income-modal');
+}
+
+function deleteIncome(id) {
+    if (!confirm('Delete this income record?')) return;
+    DB.set('income', DB.get('income').filter(x => x.id !== id));
+    toast('Income record deleted.', 'info');
+    renderFinance();
+}
+
+function saveExpense() {
+    const id = document.getElementById('expense-edit-id').value;
+    const date = document.getElementById('exp-date').value;
+    const amount = document.getElementById('exp-amount').value;
+    if (!date || !amount) { toast('Date and amount are required', 'error'); return; }
+    const rec = {
+        id: id ? parseInt(id) : genId(),
+        date, amount: parseFloat(amount),
+        category: document.getElementById('exp-category').value,
+        payee: document.getElementById('exp-payee').value.trim(),
+        reference: document.getElementById('exp-reference').value.trim(),
+        description: document.getElementById('exp-description').value.trim()
+    };
+    let list = DB.get('expenses');
+    if (id) { list = list.map(x => x.id === rec.id ? rec : x); toast('Expense record updated!'); }
+    else { list.push(rec); toast('Expense record added!'); }
+    DB.set('expenses', list);
+    closeModal('expense-modal');
+    resetExpenseForm();
+    renderFinance();
+}
+
+function resetExpenseForm() {
+    ['exp-date','exp-amount','exp-payee','exp-reference','exp-description'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('exp-category').value = 'Salaries';
+    document.getElementById('expense-edit-id').value = '';
+    document.getElementById('expense-modal-title').textContent = 'Add Expense Record';
+}
+
+function editExpense(id) {
+    const r = DB.get('expenses').find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('expense-edit-id').value = r.id;
+    document.getElementById('exp-date').value = r.date;
+    document.getElementById('exp-category').value = r.category;
+    document.getElementById('exp-amount').value = r.amount;
+    document.getElementById('exp-payee').value = r.payee || '';
+    document.getElementById('exp-reference').value = r.reference || '';
+    document.getElementById('exp-description').value = r.description || '';
+    document.getElementById('expense-modal-title').textContent = 'Edit Expense Record';
+    openModal('expense-modal');
+}
+
+function deleteExpense(id) {
+    if (!confirm('Delete this expense record?')) return;
+    DB.set('expenses', DB.get('expenses').filter(x => x.id !== id));
+    toast('Expense record deleted.', 'info');
+    renderFinance();
+}
+
+function renderFinance() {
+    const allIncome   = DB.get('income');
+    const allExpenses = DB.get('expenses');
+    const fmt = n => parseFloat(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+
+    // Income table
+    const incSearch    = (document.getElementById('income-search').value || '').toLowerCase();
+    const incFilterCat = document.getElementById('income-filter-cat').value;
+    let incList = allIncome.filter(r => {
+        const ms = !incSearch || (r.payer||'').toLowerCase().includes(incSearch) || (r.description||'').toLowerCase().includes(incSearch) || (r.reference||'').toLowerCase().includes(incSearch);
+        return ms && (!incFilterCat || r.category === incFilterCat);
+    });
+    incList.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const incTbody = document.getElementById('income-tbody');
+    incTbody.innerHTML = '';
+    document.getElementById('income-empty').style.display = incList.length ? 'none' : 'block';
+    let incTotal = 0;
+    incList.forEach((r, i) => {
+        incTotal += parseFloat(r.amount) || 0;
+        incTbody.innerHTML += `<tr>
+            <td>${i+1}</td><td>${escapeHtml(r.date)}</td>
+            <td><span class="badge badge-success">${escapeHtml(r.category)}</span></td>
+            <td><strong>$${fmt(r.amount)}</strong></td>
+            <td>${escapeHtml(r.payer) || '—'}</td>
+            <td>${escapeHtml(r.description) || '—'}</td>
+            <td>${escapeHtml(r.reference) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editIncome(${r.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteIncome(${r.id})">Delete</button>
+            </td></tr>`;
+    });
+    document.getElementById('income-total').textContent = incList.length ? `Total: $${fmt(incTotal)}` : '';
+
+    // Expense table
+    const expSearch    = (document.getElementById('expense-search').value || '').toLowerCase();
+    const expFilterCat = document.getElementById('expense-filter-cat').value;
+    let expList = allExpenses.filter(r => {
+        const ms = !expSearch || (r.payee||'').toLowerCase().includes(expSearch) || (r.description||'').toLowerCase().includes(expSearch) || (r.reference||'').toLowerCase().includes(expSearch);
+        return ms && (!expFilterCat || r.category === expFilterCat);
+    });
+    expList.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const expTbody = document.getElementById('expense-tbody');
+    expTbody.innerHTML = '';
+    document.getElementById('expense-empty').style.display = expList.length ? 'none' : 'block';
+    let expTotal = 0;
+    expList.forEach((r, i) => {
+        expTotal += parseFloat(r.amount) || 0;
+        expTbody.innerHTML += `<tr>
+            <td>${i+1}</td><td>${escapeHtml(r.date)}</td>
+            <td><span class="badge badge-danger">${escapeHtml(r.category)}</span></td>
+            <td><strong>$${fmt(r.amount)}</strong></td>
+            <td>${escapeHtml(r.payee) || '—'}</td>
+            <td>${escapeHtml(r.description) || '—'}</td>
+            <td>${escapeHtml(r.reference) || '—'}</td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editExpense(${r.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteExpense(${r.id})">Delete</button>
+            </td></tr>`;
+    });
+    document.getElementById('expense-total').textContent = expList.length ? `Total: $${fmt(expTotal)}` : '';
+
+    // Summary stats
+    const totalInc      = allIncome.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalExp      = allExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const balance       = totalInc - totalExp;
+    const currentYearMonth = new Date().toISOString().slice(0, 7);
+    const monthNet  = allIncome.filter(r => (r.date||'').startsWith(currentYearMonth)).reduce((s, r) => s + (parseFloat(r.amount)||0), 0)
+                    - allExpenses.filter(r => (r.date||'').startsWith(currentYearMonth)).reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
+    const balColor  = balance  >= 0 ? '#20c997' : '#dc3545';
+    const mnColor   = monthNet >= 0 ? '#28a745' : '#dc3545';
+    document.getElementById('finance-stats-grid').innerHTML = `
+        <div class="stat-card finance-income"><div class="stat-number">$${fmt(totalInc)}</div><div class="stat-label">Total Income</div></div>
+        <div class="stat-card finance-expense"><div class="stat-number">$${fmt(totalExp)}</div><div class="stat-label">Total Expenses</div></div>
+        <div class="stat-card finance-balance"><div class="stat-number" style="color:${balColor}">${balance<0?'-':''}$${fmt(Math.abs(balance))}</div><div class="stat-label">Net Balance</div></div>
+        <div class="stat-card"><div class="stat-number" style="color:${mnColor}">${monthNet<0?'-':''}$${fmt(Math.abs(monthNet))}</div><div class="stat-label">This Month Net</div></div>
+    `;
+
+    // Expense category bar chart
+    const expCats   = ['Salaries','Utilities','Food & Nutrition','Medical Supplies','Maintenance','Events','Transportation','Other'];
+    const expColors = ['#007bff','#fd7e14','#28a745','#dc3545','#6f42c1','#20c997','#17a2b8','#6c757d'];
+    const catTotals = expCats.map(cat => allExpenses.filter(r => r.category === cat).reduce((s, r) => s + (parseFloat(r.amount)||0), 0));
+    const maxVal    = Math.max(...catTotals, 1);
+    document.getElementById('finance-chart').innerHTML = expCats.map((cat, i) => {
+        const val = catTotals[i];
+        return `<div class="bar-row"><div class="bar-label">${escapeHtml(cat)}</div><div class="bar-track"><div class="bar-fill" style="width:${(val/maxVal*100).toFixed(1)}%;background:${expColors[i]}">$${val.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div></div>`;
+    }).join('');
 }
 
 // ===================== CLOCK =====================
@@ -1724,7 +2252,7 @@ setInterval(updateClock, 1000);
 updateClock();
 
 // ===================== INIT =====================
-showSection('home');
+initAuth();
 </script>
 
 </body>
