@@ -47,6 +47,22 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // Finance – income records
+    match /income/{recordId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Finance – expense records
+    match /expenses/{recordId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // User profiles and roles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
     // Organisation settings (single document per key)
     match /settings/{key} {
       allow read, write: if isAuthenticated();
