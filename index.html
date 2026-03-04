@@ -121,6 +121,7 @@
         }
         tr:nth-child(even) td { background: #fafafa; }
         tr:hover td { background: #f0f4ff; }
+        .table-responsive { overflow-x: auto; }
         .badge {
             display: inline-block;
             padding: 3px 9px;
@@ -300,7 +301,7 @@
         <input type="email" id="login-email" placeholder="Email address" style="margin-bottom:12px;" onkeydown="if(event.key==='Enter')doLogin()">
         <input type="password" id="login-password" placeholder="Password" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')doLogin()">
         <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
-        <p class="form-hint">Configure credentials in Settings → User Accounts.<br>
+        <p class="form-hint">Configure credentials in Settings → User Management.<br>
             Default: admin@orphanage.local / Admin@123</p>
     </div>
 </div>
@@ -639,9 +640,40 @@
                 <button class="btn btn-danger admin-only" onclick="clearAllData()">🗑️ Clear All Data</button>
             </div>
         </div>
-        <div class="card">
-            <h3>🔐 User Accounts <small style="color:#888; font-weight:400; font-size:0.8rem;">(Offline / Demo Mode)</small></h3>
-            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Configure login credentials used when Firebase Authentication is not active. For production, create users in Firebase Auth and set their role in Firestore (<code>users/{uid}.role</code>).</p>
+        <!-- ===== User Management (admin-only) ===== -->
+        <div class="card admin-only" id="user-management-card">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                <h3 style="margin:0;">👥 User Management</h3>
+                <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">➕ Add User</button>
+            </div>
+            <div id="firebase-auth-notice" class="alert alert-info" style="display:none;">
+                ℹ️ Firebase Authentication is active. Users listed below are managed via Firebase Auth + Firestore.
+            </div>
+            <div id="offline-auth-notice" class="alert alert-warning" style="display:none;">
+                ⚠️ Firebase is not configured. Managing offline demo credentials only.
+            </div>
+            <div class="table-responsive">
+                <table id="user-management-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Display Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-management-tbody">
+                        <tr><td colspan="5" style="color:#888; text-align:center;">Loading users…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== Offline Credentials (fallback) ===== -->
+        <div class="card" id="offline-credentials-card">
+            <h3>🔐 Offline / Demo Credentials</h3>
+            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Used when Firebase Authentication is not active. In production, use the User Management panel above to create Firebase Auth users.</p>
             <div class="form-grid">
                 <div><label>Admin Email</label><input type="email" id="admin-email" placeholder="admin@orphanage.local"></div>
                 <div><label>Admin Password</label><input type="password" id="admin-pass" placeholder="Leave blank to keep current"></div>
@@ -649,7 +681,7 @@
                 <div><label>Manager Password</label><input type="password" id="manager-pass" placeholder="Leave blank to keep current"></div>
             </div>
             <div style="margin-top:14px;">
-                <button class="btn btn-primary" onclick="saveUserAccounts()">💾 Save User Accounts</button>
+                <button class="btn btn-primary" onclick="saveUserAccounts()">💾 Save Offline Credentials</button>
             </div>
         </div>
     </div>
@@ -657,6 +689,40 @@
 </div><!-- end .container -->
 
 <!-- ==================== MODALS ==================== -->
+
+<!-- Add / Edit User Modal -->
+<div class="modal-overlay" id="user-modal">
+    <div class="modal">
+        <h3 id="user-modal-title">Add User</h3>
+        <input type="hidden" id="user-edit-uid">
+        <div class="form-grid">
+            <div>
+                <label>Email *</label>
+                <input type="email" id="u-email" placeholder="user@example.com">
+            </div>
+            <div>
+                <label>Display Name</label>
+                <input type="text" id="u-name" placeholder="Full Name">
+            </div>
+            <div id="u-password-wrap">
+                <label>Password *</label>
+                <input type="password" id="u-password" placeholder="Min 6 characters">
+            </div>
+            <div>
+                <label>Role *</label>
+                <select id="u-role">
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+        </div>
+        <div id="user-modal-error" class="alert alert-danger" style="display:none; margin-top:12px;"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
+            <button class="btn btn-primary" id="user-modal-save-btn" onclick="saveUser()">Add User</button>
+        </div>
+    </div>
+</div>
 
 <!-- Child Modal -->
 <div class="modal-overlay" id="child-modal">
@@ -1007,7 +1073,20 @@ function initAuth() {
                 currentUser = user;
                 if (firestoreDB) {
                     firestoreDB.collection('users').doc(user.uid).get().then(doc => {
-                        currentRole = doc.exists ? (doc.data().role || 'manager') : 'manager';
+                        if (doc.exists) {
+                            currentRole = doc.data().role || 'manager';
+                        } else {
+                            // First login – create a Firestore profile for this user
+                            const profile = {
+                                email: user.email || '',
+                                displayName: user.displayName || '',
+                                role: 'manager',
+                                disabled: false,
+                                createdAt: new Date().toISOString()
+                            };
+                            firestoreDB.collection('users').doc(user.uid).set(profile).catch(() => {});
+                            currentRole = 'manager';
+                        }
                         onLoginSuccess();
                     }).catch(() => { currentRole = 'manager'; onLoginSuccess(); });
                 } else {
@@ -2024,6 +2103,7 @@ function loadSettings() {
     document.getElementById('org-email').value = s.orgEmail || '';
     document.getElementById('backup-frequency').value = s.backupFrequency || 'Daily';
     loadUserAccounts();
+    loadUserManagement();
 }
 
 function loadUserAccounts() {
@@ -2054,6 +2134,220 @@ function clearAllData() {
     if (!confirm('This action cannot be undone. Confirm deletion of all data?')) return;
     COLLECTIONS.forEach(k => DB.set(k, []));
     toast('All data has been cleared.', 'info');
+}
+
+// ===================== USER MANAGEMENT =====================
+function loadUserManagement() {
+    const fbNotice = document.getElementById('firebase-auth-notice');
+    const offNotice = document.getElementById('offline-auth-notice');
+    if (firebaseAuth && firestoreDB) {
+        fbNotice.style.display = 'flex';
+        offNotice.style.display = 'none';
+        loadFirebaseUsers();
+    } else {
+        fbNotice.style.display = 'none';
+        offNotice.style.display = 'flex';
+        renderOfflineUsers();
+    }
+}
+
+function renderOfflineUsers() {
+    const s = DB.getObj('settings', {});
+    const adminEmail = s.adminEmail || 'admin@orphanage.local';
+    const mgrEmail   = s.managerEmail || 'manager@orphanage.local';
+    const tbody = document.getElementById('user-management-tbody');
+    tbody.innerHTML = `
+        <tr>
+            <td>${escapeHtml(adminEmail)}</td>
+            <td>Admin</td>
+            <td><span class="badge badge-danger">Admin</span></td>
+            <td><span class="badge badge-success">Active</span></td>
+            <td><em style="color:#888; font-size:0.82rem;">Edit via Offline Credentials below</em></td>
+        </tr>
+        <tr>
+            <td>${escapeHtml(mgrEmail)}</td>
+            <td>Manager</td>
+            <td><span class="badge badge-info">Manager</span></td>
+            <td><span class="badge badge-success">Active</span></td>
+            <td><em style="color:#888; font-size:0.82rem;">Edit via Offline Credentials below</em></td>
+        </tr>`;
+}
+
+function loadFirebaseUsers() {
+    const tbody = document.getElementById('user-management-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">Loading…</td></tr>';
+    firestoreDB.collection('users').get().then(snapshot => {
+        if (snapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">No users found in Firestore. Add a user to get started.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = '';
+        snapshot.forEach(doc => {
+            const u = doc.data();
+            renderUserRow(tbody, doc.id, u);
+        });
+    }).catch(err => {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#dc3545; text-align:center;">Error loading users: ${escapeHtml(err.message)}</td></tr>`;
+    });
+}
+
+function renderUserRow(tbody, uid, u) {
+    const statusBadge = u.disabled
+        ? '<span class="badge badge-secondary">Disabled</span>'
+        : '<span class="badge badge-success">Active</span>';
+    const row = document.createElement('tr');
+    row.id = 'user-row-' + uid;
+    // Build cells without inline onclick to avoid attribute-injection issues
+    const emailTd   = document.createElement('td');
+    emailTd.textContent = u.email || '';
+    const nameTd    = document.createElement('td');
+    nameTd.textContent = u.displayName || u.name || '—';
+    const roleTd    = document.createElement('td');
+    const roleSelect = document.createElement('select');
+    roleSelect.className = 'user-role-select';
+    roleSelect.dataset.uid = uid;
+    roleSelect.style.cssText = 'padding:4px 8px; font-size:0.82rem;';
+    ['manager', 'admin'].forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+        if (u.role === r) opt.selected = true;
+        roleSelect.appendChild(opt);
+    });
+    roleTd.appendChild(roleSelect);
+    const statusTd  = document.createElement('td');
+    statusTd.innerHTML = statusBadge;
+    const actionsTd = document.createElement('td');
+    actionsTd.style.whiteSpace = 'nowrap';
+    const saveBtn   = document.createElement('button');
+    saveBtn.className = 'btn btn-warning btn-sm';
+    saveBtn.textContent = '💾 Save Role';
+    saveBtn.addEventListener('click', () => saveUserRole(uid));
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn btn-danger btn-sm';
+    removeBtn.style.marginLeft = '4px';
+    removeBtn.textContent = '🗑️ Remove';
+    removeBtn.addEventListener('click', () => removeUser(uid, u.email || ''));
+    actionsTd.appendChild(saveBtn);
+    actionsTd.appendChild(removeBtn);
+    row.appendChild(emailTd);
+    row.appendChild(nameTd);
+    row.appendChild(roleTd);
+    row.appendChild(statusTd);
+    row.appendChild(actionsTd);
+    tbody.appendChild(row);
+}
+
+function saveUserRole(uid) {
+    if (!firestoreDB) { toast('Firebase not available', 'error'); return; }
+    const select = document.querySelector(`.user-role-select[data-uid="${CSS.escape(uid)}"]`);
+    if (!select) return;
+    const role = select.value;
+    firestoreDB.collection('users').doc(uid).update({ role }).then(() => {
+        toast('Role updated successfully!');
+    }).catch(err => {
+        toast('Failed to update role: ' + err.message, 'error');
+    });
+}
+
+function removeUser(uid, email) {
+    if (!confirm(`Remove user "${email}" from the system? This will delete their Firestore profile. They will still be able to authenticate until removed from Firebase Console.`)) return;
+    firestoreDB.collection('users').doc(uid).delete().then(() => {
+        const row = document.getElementById('user-row-' + uid);
+        if (row) row.remove();
+        toast('User removed from system.');
+        const tbody = document.getElementById('user-management-tbody');
+        if (tbody && tbody.children.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">No users found.</td></tr>';
+        }
+    }).catch(err => {
+        toast('Failed to remove user: ' + err.message, 'error');
+    });
+}
+
+function openAddUserModal() {
+    document.getElementById('user-modal-title').textContent = 'Add User';
+    document.getElementById('user-modal-save-btn').textContent = 'Add User';
+    document.getElementById('user-edit-uid').value = '';
+    document.getElementById('u-email').value = '';
+    document.getElementById('u-name').value = '';
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-role').value = 'manager';
+    document.getElementById('u-password-wrap').style.display = '';
+    document.getElementById('u-email').readOnly = false;
+    document.getElementById('user-modal-error').style.display = 'none';
+    openModal('user-modal');
+}
+
+async function saveUser() {
+    const uid    = document.getElementById('user-edit-uid').value;
+    const email  = document.getElementById('u-email').value.trim();
+    const name   = document.getElementById('u-name').value.trim();
+    const pass   = document.getElementById('u-password').value;
+    const role   = document.getElementById('u-role').value;
+    const errEl  = document.getElementById('user-modal-error');
+    const saveBtn = document.getElementById('user-modal-save-btn');
+    errEl.style.display = 'none';
+
+    if (!email) { errEl.textContent = 'Email is required.'; errEl.style.display = 'flex'; return; }
+    if (!uid && !pass) { errEl.textContent = 'Password is required for new users.'; errEl.style.display = 'flex'; return; }
+    if (!uid && pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display = 'flex'; return; }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+        if (uid) {
+            // Edit existing – update Firestore only
+            await firestoreDB.collection('users').doc(uid).update({ role, displayName: name });
+            toast('User updated!');
+            closeModal('user-modal');
+            loadFirebaseUsers();
+        } else if (firebaseAuth && firestoreDB) {
+            // Create new user via Firebase Auth REST API to avoid signing out the current admin
+            const apiKey = firebaseConfig.apiKey;
+            const resp = await fetch(
+                `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(apiKey)}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass, returnSecureToken: false })
+                }
+            );
+            const data = await resp.json();
+            if (!resp.ok) {
+                const rawMsg = (data.error && data.error.message) || 'FAILED_TO_CREATE_USER';
+                const msg = rawMsg === 'EMAIL_EXISTS'
+                    ? 'Email already in use.'
+                    : rawMsg.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase()) + '.';
+                errEl.textContent = msg;
+                errEl.style.display = 'flex';
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Add User';
+                return;
+            }
+            const newUid = data.localId;
+            // Store profile + role in Firestore (display name stored here since we aren't using idToken)
+            await firestoreDB.collection('users').doc(newUid).set({ email, displayName: name, role, disabled: false, createdAt: new Date().toISOString() });
+            toast(`User ${email} created successfully!`);
+            closeModal('user-modal');
+            loadFirebaseUsers();
+        } else {
+            // Offline mode – persist to localStorage only
+            const offlineUsers = DB.getObj('offlineUsers', []);
+            offlineUsers.push({ email, displayName: name, role, uid: 'offline-' + genId() });
+            DB.setObj('offlineUsers', offlineUsers);
+            toast('User added (offline mode).');
+            closeModal('user-modal');
+            renderOfflineUsers();
+        }
+    } catch (err) {
+        errEl.textContent = 'Error: ' + err.message;
+        errEl.style.display = 'flex';
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = uid ? 'Save Changes' : 'Add User';
+    }
 }
 
 // ===================== FINANCE =====================
