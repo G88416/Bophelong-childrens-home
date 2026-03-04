@@ -1511,7 +1511,7 @@ function renderStaff() {
             <td><span class="badge badge-info">${escapeHtml(s.role)}</span></td>
             <td>${escapeHtml(s.contact) || '—'}</td>
             <td>${escapeHtml(s.email) || '—'}</td>
-            <td>${s.salary ? '$' + parseFloat(s.salary).toLocaleString() : '—'}</td>
+            <td>${s.salary ? 'R' + parseFloat(s.salary).toLocaleString() : '—'}</td>
             <td>${escapeHtml(s.join) || '—'}</td>
             <td>
                 <button class="btn btn-warning btn-sm" onclick="editStaff(${s.id})">Edit</button>
@@ -1590,7 +1590,7 @@ function renderDonations() {
         tbody.innerHTML += `<tr>
             <td>${i+1}</td>
             <td><strong>${escapeHtml(d.donor)}</strong></td>
-            <td>${d.type === 'Cash' && d.amount ? '$' + parseFloat(d.amount).toLocaleString() : '—'}</td>
+            <td>${d.type === 'Cash' && d.amount ? 'R' + parseFloat(d.amount).toLocaleString() : '—'}</td>
             <td><span class="badge badge-success">${escapeHtml(d.type)}</span></td>
             <td>${escapeHtml(d.date)}</td>
             <td>${escapeHtml(d.notes) || '—'}</td>
@@ -1600,7 +1600,7 @@ function renderDonations() {
             </td>
         </tr>`;
     });
-    document.getElementById('donation-total').textContent = list.length ? `Total Cash Donations: $${total.toLocaleString()}` : '';
+    document.getElementById('donation-total').textContent = list.length ? `Total Cash Donations: R${total.toLocaleString()}` : '';
 }
 
 // ===================== ADOPTIONS =====================
@@ -1878,7 +1878,7 @@ function renderDashboard() {
     document.getElementById('stats-grid').innerHTML = `
         <div class="stat-card"><div class="stat-number">${children.length}</div><div class="stat-label">Total Children</div></div>
         <div class="stat-card green"><div class="stat-number">${staff.length}</div><div class="stat-label">Staff Members</div></div>
-        <div class="stat-card orange"><div class="stat-number">$${cashDonations.toLocaleString()}</div><div class="stat-label">Total Cash Donations</div></div>
+        <div class="stat-card orange"><div class="stat-number">R${cashDonations.toLocaleString()}</div><div class="stat-label">Total Cash Donations</div></div>
         <div class="stat-card red"><div class="stat-number">${pendingAdoptions}</div><div class="stat-label">Pending Adoptions</div></div>
         <div class="stat-card purple"><div class="stat-number">${upcomingEvents}</div><div class="stat-label">Upcoming Events</div></div>
         <div class="stat-card teal"><div class="stat-number">${medical.length}</div><div class="stat-label">Medical Records</div></div>
@@ -1957,8 +1957,8 @@ function printReport(type) {
     } else if (type === 'financial') {
         const list = DB.get('donations');
         const total = list.filter(d => d.type === 'Cash').reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
-        html = header + `<h3>Financial Report (${list.length} donations)</h3><p><strong>Total Cash Received: $${total.toLocaleString()}</strong></p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Donor</th><th>Amount</th><th>Type</th><th>Date</th></tr>`;
-        list.forEach((d, i) => { html += `<tr><td>${i+1}</td><td>${d.donor}</td><td>${d.type==='Cash'?'$'+parseFloat(d.amount).toLocaleString():''}</td><td>${d.type}</td><td>${d.date}</td></tr>`; });
+        html = header + `<h3>Financial Report (${list.length} donations)</h3><p><strong>Total Cash Received: R${total.toLocaleString()}</strong></p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Donor</th><th>Amount</th><th>Type</th><th>Date</th></tr>`;
+        list.forEach((d, i) => { html += `<tr><td>${i+1}</td><td>${d.donor}</td><td>${d.type==='Cash'?'R'+parseFloat(d.amount).toLocaleString():''}</td><td>${d.type}</td><td>${d.date}</td></tr>`; });
         html += '</table>';
     } else if (type === 'adoptions') {
         const list = DB.get('adoptions');
@@ -2179,7 +2179,7 @@ function renderFinance() {
         incTbody.innerHTML += `<tr>
             <td>${i+1}</td><td>${escapeHtml(r.date)}</td>
             <td><span class="badge badge-success">${escapeHtml(r.category)}</span></td>
-            <td><strong>$${fmt(r.amount)}</strong></td>
+            <td><strong>R${fmt(r.amount)}</strong></td>
             <td>${escapeHtml(r.payer) || '—'}</td>
             <td>${escapeHtml(r.description) || '—'}</td>
             <td>${escapeHtml(r.reference) || '—'}</td>
@@ -2188,7 +2188,7 @@ function renderFinance() {
                 <button class="btn btn-danger btn-sm" onclick="deleteIncome(${r.id})">Delete</button>
             </td></tr>`;
     });
-    document.getElementById('income-total').textContent = incList.length ? `Total: $${fmt(incTotal)}` : '';
+    document.getElementById('income-total').textContent = incList.length ? `Total: R${fmt(incTotal)}` : '';
 
     // Expense table
     const expSearch    = (document.getElementById('expense-search').value || '').toLowerCase();
@@ -2207,7 +2207,7 @@ function renderFinance() {
         expTbody.innerHTML += `<tr>
             <td>${i+1}</td><td>${escapeHtml(r.date)}</td>
             <td><span class="badge badge-danger">${escapeHtml(r.category)}</span></td>
-            <td><strong>$${fmt(r.amount)}</strong></td>
+            <td><strong>R${fmt(r.amount)}</strong></td>
             <td>${escapeHtml(r.payee) || '—'}</td>
             <td>${escapeHtml(r.description) || '—'}</td>
             <td>${escapeHtml(r.reference) || '—'}</td>
@@ -2216,7 +2216,7 @@ function renderFinance() {
                 <button class="btn btn-danger btn-sm" onclick="deleteExpense(${r.id})">Delete</button>
             </td></tr>`;
     });
-    document.getElementById('expense-total').textContent = expList.length ? `Total: $${fmt(expTotal)}` : '';
+    document.getElementById('expense-total').textContent = expList.length ? `Total: R${fmt(expTotal)}` : '';
 
     // Summary stats
     const totalInc      = allIncome.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
@@ -2228,10 +2228,10 @@ function renderFinance() {
     const balColor  = balance  >= 0 ? '#20c997' : '#dc3545';
     const mnColor   = monthNet >= 0 ? '#28a745' : '#dc3545';
     document.getElementById('finance-stats-grid').innerHTML = `
-        <div class="stat-card finance-income"><div class="stat-number">$${fmt(totalInc)}</div><div class="stat-label">Total Income</div></div>
-        <div class="stat-card finance-expense"><div class="stat-number">$${fmt(totalExp)}</div><div class="stat-label">Total Expenses</div></div>
-        <div class="stat-card finance-balance"><div class="stat-number" style="color:${balColor}">${balance<0?'-':''}$${fmt(Math.abs(balance))}</div><div class="stat-label">Net Balance</div></div>
-        <div class="stat-card"><div class="stat-number" style="color:${mnColor}">${monthNet<0?'-':''}$${fmt(Math.abs(monthNet))}</div><div class="stat-label">This Month Net</div></div>
+        <div class="stat-card finance-income"><div class="stat-number">R${fmt(totalInc)}</div><div class="stat-label">Total Income</div></div>
+        <div class="stat-card finance-expense"><div class="stat-number">R${fmt(totalExp)}</div><div class="stat-label">Total Expenses</div></div>
+        <div class="stat-card finance-balance"><div class="stat-number" style="color:${balColor}">${balance<0?'-':''}R${fmt(Math.abs(balance))}</div><div class="stat-label">Net Balance</div></div>
+        <div class="stat-card"><div class="stat-number" style="color:${mnColor}">${monthNet<0?'-':''}R${fmt(Math.abs(monthNet))}</div><div class="stat-label">This Month Net</div></div>
     `;
 
     // Expense category bar chart
@@ -2241,7 +2241,7 @@ function renderFinance() {
     const maxVal    = Math.max(...catTotals, 1);
     document.getElementById('finance-chart').innerHTML = expCats.map((cat, i) => {
         const val = catTotals[i];
-        return `<div class="bar-row"><div class="bar-label">${escapeHtml(cat)}</div><div class="bar-track"><div class="bar-fill" style="width:${(val/maxVal*100).toFixed(1)}%;background:${expColors[i]}">$${val.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div></div>`;
+        return `<div class="bar-row"><div class="bar-label">${escapeHtml(cat)}</div><div class="bar-track"><div class="bar-fill" style="width:${(val/maxVal*100).toFixed(1)}%;background:${expColors[i]}">R${val.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div></div>`;
     }).join('');
 }
 
