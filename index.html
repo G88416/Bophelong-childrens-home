@@ -673,7 +673,7 @@
         <!-- ===== Backup Credentials (fallback) ===== -->
         <div class="card" id="offline-credentials-card">
             <h3>🔐 Backup Credentials</h3>
-            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Stored in Firestore settings for fallback access. In production, use the User Management panel above to create Firebase Auth users.</p>
+            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Stored in Firestore settings for fallback access when Firebase Auth is unavailable. Requires Firestore to save or load.</p>
             <div class="form-grid">
                 <div><label>Admin Email</label><input type="email" id="admin-email" placeholder="admin@orphanage.local"></div>
                 <div><label>Admin Password</label><input type="password" id="admin-pass" placeholder="Leave blank to keep current"></div>
@@ -973,15 +973,24 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
+const DEFAULT_SETTINGS_DOC_ID = 'app';
+// Fallback order: app → settings → org. The first existing document wins; if none exist, settings stay empty.
+const SETTINGS_DOC_FALLBACKS = [DEFAULT_SETTINGS_DOC_ID, 'settings', 'org'];
 const collectionCache = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
+// objectCache is populated on demand from Firestore (for settings and other metadata).
 const objectCache = {};
 let firebaseUnavailableNotified = false;
 
-function cloneValue(value, fallback) {
-    if (value === undefined) return fallback;
+function cloneValue(value, fallback = null) {
+    if (value == null) return fallback;
     try {
+        if (typeof structuredClone === 'function') {
+            return structuredClone(value);
+        }
+        // Fallback for older browsers without structuredClone support (JSON-serializable values only).
         return JSON.parse(JSON.stringify(value));
     } catch (err) {
+        console.warn('Failed to clone cached data.', err);
         return fallback;
     }
 }
@@ -989,12 +998,55 @@ function cloneValue(value, fallback) {
 function notifyFirebaseUnavailable() {
     if (firebaseUnavailableNotified) return;
     firebaseUnavailableNotified = true;
-    toast('Firebase is unavailable. Changes will not be saved.', 'error');
+    toast('Firebase connection required. Check configuration or network.', 'error');
 }
 
 function refreshActiveSection() {
     const active = document.querySelector('.section.active');
     if (active) showSection(active.id);
+}
+
+let isRefreshQueued = false;
+function scheduleRefreshActiveSection() {
+    if (isRefreshQueued) return;
+    isRefreshQueued = true;
+    requestAnimationFrame(() => {
+        isRefreshQueued = false;
+        refreshActiveSection();
+    });
+}
+
+function resolveSettingsDocId(key) {
+    // Only the settings key is remapped; other keys map directly to document IDs.
+    return key === 'settings' ? DEFAULT_SETTINGS_DOC_ID : key;
+}
+
+function ensureCollectionKey(key, initIfMissing = false) {
+    if (Object.prototype.hasOwnProperty.call(collectionCache, key)) {
+        return true;
+    }
+    console.warn(`Unknown collection cache key "${key}".`);
+    if (initIfMissing) {
+        collectionCache[key] = [];
+        return true;
+    }
+    return false;
+}
+
+async function loadSettingsCache() {
+    if (!firestoreDB) return;
+    for (const docId of SETTINGS_DOC_FALLBACKS) {
+        try {
+            const docSnap = await getDoc(doc(firestoreDB, 'settings', docId));
+            if (docSnap.exists()) {
+                objectCache.settings = cloneValue(docSnap.data(), {});
+                scheduleRefreshActiveSection();
+                return;
+            }
+        } catch (err) {
+            console.warn(`Failed to load settings from ${docId}.`, err);
+        }
+    }
 }
 
 // ===================== FIREBASE INITIALISATION =====================
@@ -1032,23 +1084,11 @@ try {
     COLLECTIONS.forEach(col => {
         getDocs(collection(firestoreDB, col)).then(snapshot => {
             const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
-            collectionCache[col] = cloneValue(items, []);
-            refreshActiveSection();
+            collectionCache[col] = items;
+            scheduleRefreshActiveSection();
         }).catch(() => {});
     });
-    getDoc(doc(firestoreDB, 'settings', 'settings')).then(docSnap => {
-        if (docSnap.exists()) {
-            objectCache.settings = cloneValue(docSnap.data(), {});
-            refreshActiveSection();
-            return;
-        }
-        return getDoc(doc(firestoreDB, 'settings', 'org')).then(legacySnap => {
-            if (legacySnap.exists()) {
-                objectCache.settings = cloneValue(legacySnap.data(), {});
-                refreshActiveSection();
-            }
-        });
-    }).catch(() => {});
+    loadSettingsCache();
 } catch (e) {
     console.warn('Firebase initialisation skipped – storage unavailable.', e);
 }
@@ -1058,34 +1098,45 @@ try {
 // Every write is mirrored to Firestore so that data persists across devices
 // and browsers without relying on local storage.
 const DB = {
-    get(key) { return cloneValue(collectionCache[key], []); },
+    get(key) {
+        if (!ensureCollectionKey(key)) {
+            return [];
+        }
+        return cloneValue(collectionCache[key], []);
+    },
     set(key, val) {
-        // Capture previous items before overwriting cache so we can detect
-        // deletions without a Firestore read round-trip.
-        const prev = cloneValue(collectionCache[key], []);
-        collectionCache[key] = cloneValue(val, []);
         if (!firestoreDB) {
             notifyFirebaseUnavailable();
             return;
         }
+        if (!ensureCollectionKey(key, true)) {
+            return;
+        }
+        // Capture previous items before overwriting cache so we can detect
+        // deletions without a Firestore read round-trip.
+        const prev = cloneValue(collectionCache[key], []);
+        const next = cloneValue(val, []);
+        collectionCache[key] = next;
         // Upsert every item in the new list (create or overwrite by id)
-        val.forEach(item => {
+        next.forEach(item => {
             setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
         });
         // Delete items that were removed from the list
-        const newIds = new Set(val.map(item => String(item.id)));
+        const newIds = new Set(next.map(item => String(item.id)));
         prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
             deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
         });
     },
     getObj(key, def) { return cloneValue(objectCache[key], def); },
     setObj(key, val) {
-        objectCache[key] = cloneValue(val, {});
         if (!firestoreDB) {
             notifyFirebaseUnavailable();
             return;
         }
-        setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
+        const next = cloneValue(val, {});
+        objectCache[key] = next;
+        const docId = resolveSettingsDocId(key);
+        setDoc(doc(firestoreDB, 'settings', docId), next).catch(() => {});
     }
 };
 
