@@ -974,7 +974,7 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
 const SETTINGS_COLLECTION = 'settings';
-const SETTINGS_DOC_ID = 'settings';
+const SETTINGS_DOC_ID = SETTINGS_COLLECTION;
 const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
 const objectStore = {};
 
@@ -1043,7 +1043,7 @@ function storeObject(key, val) {
 const DB = {
     get(key) {
         if (!Array.isArray(memoryStore[key])) return [];
-        return cloneData(memoryStore[key]) || [];
+        return cloneData(memoryStore[key]);
     },
     set(key, val) {
         const prev = this.get(key);
