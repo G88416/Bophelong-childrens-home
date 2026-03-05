@@ -1015,22 +1015,42 @@ try {
 // ===================== DATA STORE =====================
 // Use an in-memory cache for synchronous reads, with Firestore as the only
 // persisted source of truth.
+function cloneData(data) {
+    if (data === undefined) return data;
+    try {
+        return JSON.parse(JSON.stringify(data));
+    } catch (err) {
+        return data;
+    }
+}
+
+function storeList(key, val) {
+    memoryStore[key] = Array.isArray(val) ? cloneData(val) : [];
+    return memoryStore[key];
+}
+
+function storeObject(key, val) {
+    objectStore[key] = cloneData(val);
+    return objectStore[key];
+}
+
 const DB = {
     get(key) {
-        return Object.hasOwn(memoryStore, key) && Array.isArray(memoryStore[key]) ? memoryStore[key] : [];
+        if (!Object.hasOwn(memoryStore, key) || !Array.isArray(memoryStore[key])) return [];
+        return cloneData(memoryStore[key]) || [];
     },
     set(key, val) {
         const prev = this.get(key);
-        memoryStore[key] = Array.isArray(val) ? val : [];
+        const stored = storeList(key, val);
         if (firestoreDB) {
             // Upsert every item in the new list (create or overwrite by id)
-            memoryStore[key].forEach(item => {
+            stored.forEach(item => {
                 if (item && item.id !== undefined) {
                     setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
                 }
             });
             // Delete items that were removed from the list
-            const newIds = new Set(memoryStore[key].map(item => String(item.id)));
+            const newIds = new Set(stored.map(item => String(item.id)));
             prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
                 if (item && item.id !== undefined) {
                     deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
@@ -1039,19 +1059,20 @@ const DB = {
         }
     },
     getObj(key, def) {
-        return Object.hasOwn(objectStore, key) && objectStore[key] !== undefined ? objectStore[key] : def;
+        if (!Object.hasOwn(objectStore, key) || objectStore[key] === undefined) return def;
+        return cloneData(objectStore[key]);
     },
     setObj(key, val) {
-        objectStore[key] = val;
+        storeObject(key, val);
         if (firestoreDB) {
             setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
         }
     },
     hydrate(key, val) {
-        memoryStore[key] = Array.isArray(val) ? val : [];
+        storeList(key, val);
     },
     hydrateObj(key, val) {
-        objectStore[key] = val;
+        storeObject(key, val);
     }
 };
 
