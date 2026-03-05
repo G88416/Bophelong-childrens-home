@@ -1072,9 +1072,8 @@ const DB = {
     },
     setObj(key, val) {
         storeObject(key, val);
-        if (firestoreDB) {
-            const docId = key === SETTINGS_KEY ? SETTINGS_DOC_ID : key;
-            setDoc(doc(firestoreDB, SETTINGS_COLLECTION, docId), val).catch(() => {});
+        if (firestoreDB && key === SETTINGS_KEY) {
+            setDoc(doc(firestoreDB, SETTINGS_COLLECTION, SETTINGS_DOC_ID), val).catch(() => {});
         }
     },
     hydrate(key, val) {
