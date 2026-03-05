@@ -973,6 +973,12 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
+const SETTINGS_COLLECTION = 'settings';
+const SETTINGS_KEY = 'settings';
+const SETTINGS_DOC_ID = 'org';
+const LEGACY_SETTINGS_DOC_ID = 'settings';
+const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
+const objectStore = {};
 
 // ===================== FIREBASE INITIALISATION =====================
 const firebaseConfig = {
@@ -1005,58 +1011,119 @@ try {
     firebaseStorage = getStorage(app);
     firebaseAuth = getAuth(app);
 
-    // Load each collection from Firestore into localStorage on startup
-    COLLECTIONS.forEach(col => {
-        getDocs(collection(firestoreDB, col)).then(snapshot => {
-            if (!snapshot.empty) {
-                const items = snapshot.docs.map(d => d.data());
-                localStorage.setItem('oms_' + col, JSON.stringify(items));
-                // Re-render whichever section is currently active
-                const active = document.querySelector('.section.active');
-                if (active) showSection(active.id);
-            }
-        }).catch(() => {});
-    });
-    getDoc(doc(firestoreDB, 'settings', 'org')).then(docSnap => {
-        if (docSnap.exists()) {
-            localStorage.setItem('oms_settings', JSON.stringify(docSnap.data()));
-        }
-    }).catch(() => {});
 } catch (e) {
     console.warn('Firebase initialisation skipped – running in offline mode.', e);
 }
 
 // ===================== DATA STORE =====================
-// localStorage provides instant synchronous reads required by all render
-// functions.  Every write is also mirrored to Firestore when available so
-// that data persists across devices and browsers.
+// Use an in-memory cache for synchronous reads, with Firestore as the only
+// persisted source of truth.
+function cloneData(data) {
+    if (data === undefined) return data;
+    if (typeof structuredClone === 'function') {
+        try {
+            return structuredClone(data);
+        } catch (err) {}
+    }
+    try {
+        return JSON.parse(JSON.stringify(data));
+    } catch (err) {
+        return data;
+    }
+}
+
+function storeList(key, val) {
+    memoryStore[key] = Array.isArray(val) ? cloneData(val) : [];
+    return memoryStore[key];
+}
+
+function storeObject(key, val) {
+    objectStore[key] = cloneData(val);
+    return objectStore[key];
+}
+
 const DB = {
-    get(key) { try { return JSON.parse(localStorage.getItem('oms_' + key) || '[]'); } catch(e) { return []; } },
+    get(key) {
+        if (!Array.isArray(memoryStore[key])) return [];
+        return cloneData(memoryStore[key]);
+    },
     set(key, val) {
-        // Capture previous items before overwriting localStorage so we can
-        // detect deletions without a Firestore read round-trip.
-        const prev = this.get(key);
-        localStorage.setItem('oms_' + key, JSON.stringify(val));
+        const prev = Array.isArray(memoryStore[key]) ? memoryStore[key] : [];
+        const stored = storeList(key, val);
         if (firestoreDB) {
             // Upsert every item in the new list (create or overwrite by id)
-            val.forEach(item => {
-                setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
+            stored.forEach(item => {
+                if (item && item.id !== undefined) {
+                    setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
+                }
             });
             // Delete items that were removed from the list
-            const newIds = new Set(val.map(item => String(item.id)));
+            const newIds = new Set(stored.map(item => String(item.id)));
             prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
-                deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
+                if (item && item.id !== undefined) {
+                    deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
+                }
             });
         }
     },
-    getObj(key, def) { try { return JSON.parse(localStorage.getItem('oms_' + key) || JSON.stringify(def)); } catch(e) { return def; } },
+    getObj(key, def) {
+        if (!Object.hasOwn(objectStore, key)) return def;
+        return cloneData(objectStore[key]);
+    },
     setObj(key, val) {
-        localStorage.setItem('oms_' + key, JSON.stringify(val));
+        storeObject(key, val);
         if (firestoreDB) {
-            setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
+            const docId = key === SETTINGS_KEY ? SETTINGS_DOC_ID : key;
+            setDoc(doc(firestoreDB, SETTINGS_COLLECTION, docId), val).catch(() => {});
         }
+    },
+    hydrate(key, val) {
+        storeList(key, val);
+    },
+    hydrateObj(key, val) {
+        storeObject(key, val);
     }
 };
+
+function refreshActiveSection() {
+    const active = document.querySelector('.section.active');
+    if (active) showSection(active.id);
+}
+
+let refreshFrame = null;
+function queueActiveSectionRefresh() {
+    if (refreshFrame) {
+        cancelAnimationFrame(refreshFrame);
+    }
+    refreshFrame = requestAnimationFrame(() => {
+        refreshFrame = null;
+        refreshActiveSection();
+    });
+}
+
+function loadFirestoreCache() {
+    if (!firestoreDB) return;
+    COLLECTIONS.forEach(col => {
+        getDocs(collection(firestoreDB, col)).then(snapshot => {
+            const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
+            DB.hydrate(col, items);
+            queueActiveSectionRefresh();
+        }).catch(() => {});
+    });
+    getDoc(doc(firestoreDB, SETTINGS_COLLECTION, SETTINGS_DOC_ID)).then(docSnap => {
+        if (docSnap.exists()) {
+            DB.hydrateObj(SETTINGS_KEY, docSnap.data());
+            queueActiveSectionRefresh();
+            return;
+        }
+        getDoc(doc(firestoreDB, SETTINGS_COLLECTION, LEGACY_SETTINGS_DOC_ID)).then(legacySnap => {
+            if (legacySnap.exists()) {
+                DB.hydrateObj(SETTINGS_KEY, legacySnap.data());
+                queueActiveSectionRefresh();
+            }
+        }).catch(() => {});
+    }).catch(() => {});
+}
 
 function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
 
@@ -1132,6 +1199,7 @@ function onLoginSuccess() {
     document.getElementById('login-overlay').classList.add('hidden');
     applyRoleBasedUI();
     updateHeaderUser();
+    loadFirestoreCache();
     showSection('home');
 }
 
@@ -2358,7 +2426,7 @@ async function saveUser() {
             closeModal('user-modal');
             loadFirebaseUsers();
         } else {
-            // Offline mode – persist to localStorage only
+            // Offline mode – cache users in memory only
             const offlineUsers = DB.getObj('offlineUsers', []);
             offlineUsers.push({ email, displayName: name, role, uid: 'offline-' + genId() });
             DB.setObj('offlineUsers', offlineUsers);
