@@ -1016,7 +1016,9 @@ try {
 // Use an in-memory cache for synchronous reads, with Firestore as the only
 // persisted source of truth.
 const DB = {
-    get(key) { return Array.isArray(memoryStore[key]) ? memoryStore[key] : []; },
+    get(key) {
+        return Object.hasOwn(memoryStore, key) && Array.isArray(memoryStore[key]) ? memoryStore[key] : [];
+    },
     set(key, val) {
         const prev = this.get(key);
         memoryStore[key] = Array.isArray(val) ? val : [];
@@ -1037,7 +1039,7 @@ const DB = {
         }
     },
     getObj(key, def) {
-        return Object.hasOwn(objectStore, key) ? objectStore[key] : def;
+        return Object.hasOwn(objectStore, key) && objectStore[key] !== undefined ? objectStore[key] : def;
     },
     setObj(key, val) {
         objectStore[key] = val;
@@ -1058,13 +1060,13 @@ function refreshActiveSection() {
     if (active) showSection(active.id);
 }
 
-let refreshTimer = null;
-function scheduleActiveSectionRefresh() {
-    if (refreshTimer) return;
-    refreshTimer = setTimeout(() => {
-        refreshTimer = null;
+let refreshFrame = null;
+function queueActiveSectionRefresh() {
+    if (refreshFrame) return;
+    refreshFrame = requestAnimationFrame(() => {
+        refreshFrame = null;
         refreshActiveSection();
-    }, 0);
+    });
 }
 
 function loadFirestoreCache() {
@@ -1073,14 +1075,14 @@ function loadFirestoreCache() {
         getDocs(collection(firestoreDB, col)).then(snapshot => {
             const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
             DB.hydrate(col, items);
-            scheduleActiveSectionRefresh();
+            queueActiveSectionRefresh();
         }).catch(() => {});
     });
     OBJECT_STORE_KEYS.forEach(key => {
         getDoc(doc(firestoreDB, 'settings', key)).then(docSnap => {
             if (docSnap.exists()) {
                 DB.hydrateObj(key, docSnap.data());
-                scheduleActiveSectionRefresh();
+                queueActiveSectionRefresh();
             }
         }).catch(() => {});
     });
