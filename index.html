@@ -1067,7 +1067,7 @@ const DB = {
         }
     },
     getObj(key, def) {
-        if (!Object.hasOwn(objectStore, key)) return def;
+        if (!Object.hasOwn(objectStore, key)) return cloneData(def);
         return cloneData(objectStore[key]);
     },
     setObj(key, val) {
