@@ -973,7 +973,7 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
-const OBJECT_STORE_KEYS = ['settings','offlineUsers'];
+const SETTINGS_DOCUMENT_KEYS = ['settings'];
 const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
 const objectStore = {};
 
@@ -1017,6 +1017,11 @@ try {
 // persisted source of truth.
 function cloneData(data) {
     if (data === undefined) return data;
+    if (typeof structuredClone === 'function') {
+        try {
+            return structuredClone(data);
+        } catch (err) {}
+    }
     try {
         return JSON.parse(JSON.stringify(data));
     } catch (err) {
@@ -1099,7 +1104,7 @@ function loadFirestoreCache() {
             queueActiveSectionRefresh();
         }).catch(() => {});
     });
-    OBJECT_STORE_KEYS.forEach(key => {
+    SETTINGS_DOCUMENT_KEYS.forEach(key => {
         getDoc(doc(firestoreDB, 'settings', key)).then(docSnap => {
             if (docSnap.exists()) {
                 DB.hydrateObj(key, docSnap.data());
