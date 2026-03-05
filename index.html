@@ -650,7 +650,7 @@
                 ℹ️ Firebase Authentication is active. Users listed below are managed via Firebase Auth + Firestore.
             </div>
             <div id="offline-auth-notice" class="alert alert-warning" style="display:none;">
-                ⚠️ Firebase is not configured. Managing offline demo credentials only.
+                ⚠️ Firebase Authentication is unavailable. User management requires Firebase to persist changes.
             </div>
             <div class="table-responsive">
                 <table id="user-management-table">
@@ -670,10 +670,10 @@
             </div>
         </div>
 
-        <!-- ===== Offline Credentials (fallback) ===== -->
+        <!-- ===== Backup Credentials (fallback) ===== -->
         <div class="card" id="offline-credentials-card">
-            <h3>🔐 Offline / Demo Credentials</h3>
-            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Used when Firebase Authentication is not active. In production, use the User Management panel above to create Firebase Auth users.</p>
+            <h3>🔐 Backup Credentials</h3>
+            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Stored in Firestore settings for fallback access. In production, use the User Management panel above to create Firebase Auth users.</p>
             <div class="form-grid">
                 <div><label>Admin Email</label><input type="email" id="admin-email" placeholder="admin@orphanage.local"></div>
                 <div><label>Admin Password</label><input type="password" id="admin-pass" placeholder="Leave blank to keep current"></div>
@@ -681,7 +681,7 @@
                 <div><label>Manager Password</label><input type="password" id="manager-pass" placeholder="Leave blank to keep current"></div>
             </div>
             <div style="margin-top:14px;">
-                <button class="btn btn-primary" onclick="saveUserAccounts()">💾 Save Offline Credentials</button>
+                <button class="btn btn-primary" onclick="saveUserAccounts()">💾 Save Backup Credentials</button>
             </div>
         </div>
     </div>
@@ -973,6 +973,29 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
+const collectionCache = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
+const objectCache = {};
+let firebaseUnavailableNotified = false;
+
+function cloneValue(value, fallback) {
+    if (value === undefined) return fallback;
+    try {
+        return JSON.parse(JSON.stringify(value));
+    } catch (err) {
+        return fallback;
+    }
+}
+
+function notifyFirebaseUnavailable() {
+    if (firebaseUnavailableNotified) return;
+    firebaseUnavailableNotified = true;
+    toast('Firebase is unavailable. Changes will not be saved.', 'error');
+}
+
+function refreshActiveSection() {
+    const active = document.querySelector('.section.active');
+    if (active) showSection(active.id);
+}
 
 // ===================== FIREBASE INITIALISATION =====================
 const firebaseConfig = {
@@ -1005,56 +1028,64 @@ try {
     firebaseStorage = getStorage(app);
     firebaseAuth = getAuth(app);
 
-    // Load each collection from Firestore into localStorage on startup
+    // Load each collection from Firestore into the in-memory cache on startup
     COLLECTIONS.forEach(col => {
         getDocs(collection(firestoreDB, col)).then(snapshot => {
-            if (!snapshot.empty) {
-                const items = snapshot.docs.map(d => d.data());
-                localStorage.setItem('oms_' + col, JSON.stringify(items));
-                // Re-render whichever section is currently active
-                const active = document.querySelector('.section.active');
-                if (active) showSection(active.id);
-            }
+            const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
+            collectionCache[col] = cloneValue(items, []);
+            refreshActiveSection();
         }).catch(() => {});
     });
-    getDoc(doc(firestoreDB, 'settings', 'org')).then(docSnap => {
+    getDoc(doc(firestoreDB, 'settings', 'settings')).then(docSnap => {
         if (docSnap.exists()) {
-            localStorage.setItem('oms_settings', JSON.stringify(docSnap.data()));
+            objectCache.settings = cloneValue(docSnap.data(), {});
+            refreshActiveSection();
+            return;
         }
+        return getDoc(doc(firestoreDB, 'settings', 'org')).then(legacySnap => {
+            if (legacySnap.exists()) {
+                objectCache.settings = cloneValue(legacySnap.data(), {});
+                refreshActiveSection();
+            }
+        });
     }).catch(() => {});
 } catch (e) {
-    console.warn('Firebase initialisation skipped – running in offline mode.', e);
+    console.warn('Firebase initialisation skipped – storage unavailable.', e);
 }
 
 // ===================== DATA STORE =====================
-// localStorage provides instant synchronous reads required by all render
-// functions.  Every write is also mirrored to Firestore when available so
-// that data persists across devices and browsers.
+// In-memory cache provides synchronous reads required by render functions.
+// Every write is mirrored to Firestore so that data persists across devices
+// and browsers without relying on local storage.
 const DB = {
-    get(key) { try { return JSON.parse(localStorage.getItem('oms_' + key) || '[]'); } catch(e) { return []; } },
+    get(key) { return cloneValue(collectionCache[key], []); },
     set(key, val) {
-        // Capture previous items before overwriting localStorage so we can
-        // detect deletions without a Firestore read round-trip.
-        const prev = this.get(key);
-        localStorage.setItem('oms_' + key, JSON.stringify(val));
-        if (firestoreDB) {
-            // Upsert every item in the new list (create or overwrite by id)
-            val.forEach(item => {
-                setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
-            });
-            // Delete items that were removed from the list
-            const newIds = new Set(val.map(item => String(item.id)));
-            prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
-                deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
-            });
+        // Capture previous items before overwriting cache so we can detect
+        // deletions without a Firestore read round-trip.
+        const prev = cloneValue(collectionCache[key], []);
+        collectionCache[key] = cloneValue(val, []);
+        if (!firestoreDB) {
+            notifyFirebaseUnavailable();
+            return;
         }
+        // Upsert every item in the new list (create or overwrite by id)
+        val.forEach(item => {
+            setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
+        });
+        // Delete items that were removed from the list
+        const newIds = new Set(val.map(item => String(item.id)));
+        prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
+            deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
+        });
     },
-    getObj(key, def) { try { return JSON.parse(localStorage.getItem('oms_' + key) || JSON.stringify(def)); } catch(e) { return def; } },
+    getObj(key, def) { return cloneValue(objectCache[key], def); },
     setObj(key, val) {
-        localStorage.setItem('oms_' + key, JSON.stringify(val));
-        if (firestoreDB) {
-            setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
+        objectCache[key] = cloneValue(val, {});
+        if (!firestoreDB) {
+            notifyFirebaseUnavailable();
+            return;
         }
+        setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
     }
 };
 
@@ -2168,7 +2199,9 @@ function loadUserManagement() {
     } else {
         fbNotice.style.display = 'none';
         offNotice.style.display = 'flex';
-        renderOfflineUsers();
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">Firebase is required to load users.</td></tr>';
+        }
     }
 }
 
@@ -2358,13 +2391,8 @@ async function saveUser() {
             closeModal('user-modal');
             loadFirebaseUsers();
         } else {
-            // Offline mode – persist to localStorage only
-            const offlineUsers = DB.getObj('offlineUsers', []);
-            offlineUsers.push({ email, displayName: name, role, uid: 'offline-' + genId() });
-            DB.setObj('offlineUsers', offlineUsers);
-            toast('User added (offline mode).');
-            closeModal('user-modal');
-            renderOfflineUsers();
+            errEl.textContent = 'Firebase is required to create users.';
+            errEl.style.display = 'flex';
         }
     } catch (err) {
         errEl.textContent = 'Error: ' + err.message;
