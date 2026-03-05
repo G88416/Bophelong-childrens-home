@@ -964,42 +964,50 @@
     <p>&copy; 2026 Bophelong Childrens Home Management System. Data synced with Firebase Firestore.</p>
 </footer>
 
-<!-- Firebase compat SDK (v9 compat build – works as global firebase.*) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
-<script>
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
 
 // ===================== FIREBASE INITIALISATION =====================
-// Replace the placeholder values below with your project's Firebase config
-// (Firebase console → Project settings → Your apps → SDK setup and configuration)
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDY9tI_hSISK2_Of2MuMUTEh_J8g0Wti3o",
+    authDomain: "children-s-home-a0ce1.firebaseapp.com",
+    projectId: "children-s-home-a0ce1",
+    storageBucket: "children-s-home-a0ce1.firebasestorage.app",
+    messagingSenderId: "336660642831",
+    appId: "1:336660642831:web:307aec75a1d253b7bbf77a",
+    measurementId: "G-D1W2PQB25B"
 };
 
 let firestoreDB = null;
 let firebaseStorage = null;
 let firebaseAuth = null;
 try {
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig);
+    const analytics = (() => {
+        try {
+            return getAnalytics(app);
+        } catch (err) {
+            console.warn('Firebase analytics unavailable.', err);
+            return null;
+        }
+    })();
+    if (analytics) {
+        logEvent(analytics, 'page_view');
     }
-    firestoreDB = firebase.firestore();
-    firebaseStorage = firebase.storage();
-    firebaseAuth = firebase.auth();
+    firestoreDB = getFirestore(app);
+    firebaseStorage = getStorage(app);
+    firebaseAuth = getAuth(app);
 
     // Load each collection from Firestore into localStorage on startup
     COLLECTIONS.forEach(col => {
-        firestoreDB.collection(col).get().then(snapshot => {
+        getDocs(collection(firestoreDB, col)).then(snapshot => {
             if (!snapshot.empty) {
                 const items = snapshot.docs.map(d => d.data());
                 localStorage.setItem('oms_' + col, JSON.stringify(items));
@@ -1009,9 +1017,9 @@ try {
             }
         }).catch(() => {});
     });
-    firestoreDB.collection('settings').doc('org').get().then(doc => {
-        if (doc.exists) {
-            localStorage.setItem('oms_settings', JSON.stringify(doc.data()));
+    getDoc(doc(firestoreDB, 'settings', 'org')).then(docSnap => {
+        if (docSnap.exists()) {
+            localStorage.setItem('oms_settings', JSON.stringify(docSnap.data()));
         }
     }).catch(() => {});
 } catch (e) {
@@ -1032,12 +1040,12 @@ const DB = {
         if (firestoreDB) {
             // Upsert every item in the new list (create or overwrite by id)
             val.forEach(item => {
-                firestoreDB.collection(key).doc(String(item.id)).set(item).catch(() => {});
+                setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
             });
             // Delete items that were removed from the list
             const newIds = new Set(val.map(item => String(item.id)));
             prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
-                firestoreDB.collection(key).doc(String(item.id)).delete().catch(() => {});
+                deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
             });
         }
     },
@@ -1045,7 +1053,7 @@ const DB = {
     setObj(key, val) {
         localStorage.setItem('oms_' + key, JSON.stringify(val));
         if (firestoreDB) {
-            firestoreDB.collection('settings').doc(key).set(val).catch(() => {});
+            setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
         }
     }
 };
@@ -1068,13 +1076,13 @@ async function hashPassword(pw) {
 
 function initAuth() {
     if (firebaseAuth) {
-        firebaseAuth.onAuthStateChanged(function(user) {
+        onAuthStateChanged(firebaseAuth, function(user) {
             if (user) {
                 currentUser = user;
                 if (firestoreDB) {
-                    firestoreDB.collection('users').doc(user.uid).get().then(doc => {
-                        if (doc.exists) {
-                            currentRole = doc.data().role || 'manager';
+                    getDoc(doc(firestoreDB, 'users', user.uid)).then(docSnap => {
+                        if (docSnap.exists()) {
+                            currentRole = docSnap.data().role || 'manager';
                         } else {
                             // First login – create a Firestore profile for this user
                             const profile = {
@@ -1084,7 +1092,7 @@ function initAuth() {
                                 disabled: false,
                                 createdAt: new Date().toISOString()
                             };
-                            firestoreDB.collection('users').doc(user.uid).set(profile).catch(() => {});
+                            setDoc(doc(firestoreDB, 'users', user.uid), profile).catch(() => {});
                             currentRole = 'manager';
                         }
                         onLoginSuccess();
@@ -1154,7 +1162,7 @@ async function doLogin() {
 
     if (firebaseAuth) {
         try {
-            await firebaseAuth.signInWithEmailAndPassword(email, password);
+            await signInWithEmailAndPassword(firebaseAuth, email, password);
             return; // onAuthStateChanged handles success
         } catch(e) {
             if (['auth/wrong-password','auth/user-not-found','auth/invalid-credential','auth/invalid-email'].includes(e.code)) {
@@ -1196,7 +1204,7 @@ function doLogout() {
     sessionStorage.removeItem('oms_session');
     currentUser = null;
     currentRole = null;
-    if (firebaseAuth) { try { firebaseAuth.signOut(); } catch(e) {} }
+    if (firebaseAuth) { try { signOut(firebaseAuth); } catch(e) {} }
     document.getElementById('login-overlay').classList.remove('hidden');
     document.getElementById('header-user').textContent = '';
 }
@@ -2176,7 +2184,7 @@ function renderOfflineUsers() {
 function loadFirebaseUsers() {
     const tbody = document.getElementById('user-management-tbody');
     tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">Loading…</td></tr>';
-    firestoreDB.collection('users').get().then(snapshot => {
+    getDocs(collection(firestoreDB, 'users')).then(snapshot => {
         if (snapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">No users found in Firestore. Add a user to get started.</td></tr>';
             return;
@@ -2243,7 +2251,7 @@ function saveUserRole(uid) {
     const select = document.querySelector(`.user-role-select[data-uid="${CSS.escape(uid)}"]`);
     if (!select) return;
     const role = select.value;
-    firestoreDB.collection('users').doc(uid).update({ role }).then(() => {
+    updateDoc(doc(firestoreDB, 'users', uid), { role }).then(() => {
         toast('Role updated successfully!');
     }).catch(err => {
         toast('Failed to update role: ' + err.message, 'error');
@@ -2252,7 +2260,7 @@ function saveUserRole(uid) {
 
 function removeUser(uid, email) {
     if (!confirm(`Remove user "${email}" from the system? This will delete their Firestore profile. They will still be able to authenticate until removed from Firebase Console.`)) return;
-    firestoreDB.collection('users').doc(uid).delete().then(() => {
+    deleteDoc(doc(firestoreDB, 'users', uid)).then(() => {
         const row = document.getElementById('user-row-' + uid);
         if (row) row.remove();
         toast('User removed from system.');
@@ -2299,7 +2307,7 @@ async function saveUser() {
     try {
         if (uid) {
             // Edit existing – update Firestore only
-            await firestoreDB.collection('users').doc(uid).update({ role, displayName: name });
+            await updateDoc(doc(firestoreDB, 'users', uid), { role, displayName: name });
             toast('User updated!');
             closeModal('user-modal');
             loadFirebaseUsers();
@@ -2328,7 +2336,7 @@ async function saveUser() {
             }
             const newUid = data.localId;
             // Store profile + role in Firestore (display name stored here since we aren't using idToken)
-            await firestoreDB.collection('users').doc(newUid).set({ email, displayName: name, role, disabled: false, createdAt: new Date().toISOString() });
+            await setDoc(doc(firestoreDB, 'users', newUid), { email, displayName: name, role, disabled: false, createdAt: new Date().toISOString() });
             toast(`User ${email} created successfully!`);
             closeModal('user-modal');
             loadFirebaseUsers();
@@ -2546,6 +2554,59 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 updateClock();
+
+Object.assign(window, {
+    doLogin,
+    doLogout,
+    showSection,
+    openModal,
+    closeModal,
+    renderChildren,
+    renderMedical,
+    renderStaff,
+    renderDonations,
+    renderAdoptions,
+    renderEvents,
+    renderInventory,
+    renderFinance,
+    printReport,
+    exportData,
+    saveSettings,
+    clearAllData,
+    openAddUserModal,
+    saveUserAccounts,
+    saveUser,
+    saveChild,
+    saveMedical,
+    saveVaccine,
+    saveStaff,
+    saveDonation,
+    saveAdoption,
+    saveEvent,
+    saveInventory,
+    saveIncome,
+    saveExpense,
+    editChild,
+    deleteChild,
+    editMedical,
+    deleteMedical,
+    editVaccine,
+    deleteVaccine,
+    editStaff,
+    deleteStaff,
+    editDonation,
+    deleteDonation,
+    editAdoption,
+    deleteAdoption,
+    editEvent,
+    deleteEvent,
+    editInventory,
+    deleteInventory,
+    editIncome,
+    deleteIncome,
+    editExpense,
+    deleteExpense
+});
 
 // ===================== INIT =====================
 initAuth();
