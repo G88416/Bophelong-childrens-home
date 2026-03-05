@@ -2148,9 +2148,22 @@ function clearAllData() {
 function loadUserManagement() {
     const fbNotice = document.getElementById('firebase-auth-notice');
     const offNotice = document.getElementById('offline-auth-notice');
+    const tbody = document.getElementById('user-management-tbody');
     if (firebaseAuth && firestoreDB) {
         fbNotice.style.display = 'flex';
         offNotice.style.display = 'none';
+        if (!currentUser) {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">Sign in to load users.</td></tr>';
+            }
+            return;
+        }
+        if (currentRole !== 'admin') {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">User management is restricted to administrators.</td></tr>';
+            }
+            return;
+        }
         loadFirebaseUsers();
     } else {
         fbNotice.style.display = 'none';
@@ -2195,6 +2208,10 @@ function loadFirebaseUsers() {
             renderUserRow(tbody, doc.id, u);
         });
     }).catch(err => {
+        if (err && ['permission-denied', 'unauthenticated'].includes(err.code)) {
+            tbody.innerHTML = '<tr><td colspan="5" style="color:#dc3545; text-align:center;">User list access requires admin permissions. Please sign in with an admin account.</td></tr>';
+            return;
+        }
         tbody.innerHTML = `<tr><td colspan="5" style="color:#dc3545; text-align:center;">Error loading users: ${escapeHtml(err.message)}</td></tr>`;
     });
 }
