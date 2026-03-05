@@ -973,7 +973,8 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
-const SETTINGS_DOCUMENT_KEYS = ['settings'];
+const SETTINGS_COLLECTION = 'settings';
+const SETTINGS_DOC_ID = 'settings';
 const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
 const objectStore = {};
 
@@ -1041,7 +1042,7 @@ function storeObject(key, val) {
 
 const DB = {
     get(key) {
-        if (!Object.hasOwn(memoryStore, key) || !Array.isArray(memoryStore[key])) return [];
+        if (!Array.isArray(memoryStore[key])) return [];
         return cloneData(memoryStore[key]) || [];
     },
     set(key, val) {
@@ -1064,13 +1065,13 @@ const DB = {
         }
     },
     getObj(key, def) {
-        if (!Object.hasOwn(objectStore, key) || objectStore[key] === undefined) return def;
+        if (!Object.hasOwn(objectStore, key)) return def;
         return cloneData(objectStore[key]);
     },
     setObj(key, val) {
         storeObject(key, val);
         if (firestoreDB) {
-            setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
+            setDoc(doc(firestoreDB, SETTINGS_COLLECTION, key), val).catch(() => {});
         }
     },
     hydrate(key, val) {
@@ -1088,7 +1089,9 @@ function refreshActiveSection() {
 
 let refreshFrame = null;
 function queueActiveSectionRefresh() {
-    if (refreshFrame) return;
+    if (refreshFrame) {
+        cancelAnimationFrame(refreshFrame);
+    }
     refreshFrame = requestAnimationFrame(() => {
         refreshFrame = null;
         refreshActiveSection();
@@ -1104,14 +1107,12 @@ function loadFirestoreCache() {
             queueActiveSectionRefresh();
         }).catch(() => {});
     });
-    SETTINGS_DOCUMENT_KEYS.forEach(key => {
-        getDoc(doc(firestoreDB, 'settings', key)).then(docSnap => {
-            if (docSnap.exists()) {
-                DB.hydrateObj(key, docSnap.data());
-                queueActiveSectionRefresh();
-            }
-        }).catch(() => {});
-    });
+    getDoc(doc(firestoreDB, SETTINGS_COLLECTION, SETTINGS_DOC_ID)).then(docSnap => {
+        if (docSnap.exists()) {
+            DB.hydrateObj(SETTINGS_DOC_ID, docSnap.data());
+            queueActiveSectionRefresh();
+        }
+    }).catch(() => {});
 }
 
 function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
