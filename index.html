@@ -1042,10 +1042,6 @@ function storeObject(key, val) {
     return objectStore[key];
 }
 
-function resolveSettingsDocId(key) {
-    return key === SETTINGS_KEY ? SETTINGS_DOC_ID : key;
-}
-
 const DB = {
     get(key) {
         if (!Array.isArray(memoryStore[key])) return [];
@@ -1077,7 +1073,8 @@ const DB = {
     setObj(key, val) {
         storeObject(key, val);
         if (firestoreDB) {
-            setDoc(doc(firestoreDB, SETTINGS_COLLECTION, resolveSettingsDocId(key)), val).catch(() => {});
+            const docId = key === SETTINGS_KEY ? SETTINGS_DOC_ID : key;
+            setDoc(doc(firestoreDB, SETTINGS_COLLECTION, docId), val).catch(() => {});
         }
     },
     hydrate(key, val) {
@@ -1119,7 +1116,6 @@ function loadFirestoreCache() {
             queueActiveSectionRefresh();
             return;
         }
-        if (LEGACY_SETTINGS_DOC_ID === SETTINGS_DOC_ID) return;
         getDoc(doc(firestoreDB, SETTINGS_COLLECTION, LEGACY_SETTINGS_DOC_ID)).then(legacySnap => {
             if (legacySnap.exists()) {
                 DB.hydrateObj(SETTINGS_KEY, legacySnap.data());
