@@ -302,7 +302,7 @@
         <input type="password" id="login-password" placeholder="Password" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')doLogin()">
         <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
         <p class="form-hint">Sign in with your Firebase account.<br>
-            Configure users in Settings → User Management.</p>
+            First-time setup: create an admin in Firebase Authentication, then manage users in Settings → User Management.</p>
     </div>
 </div>
 
@@ -977,6 +977,16 @@ const SETTINGS_DOC_ID = 'org';
 const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
 const objectStore = {};
 let settingsStore = {};
+let firestoreUnavailableWarned = false;
+
+function cloneData(value) {
+    if (value === undefined || value === null) return value;
+    if (typeof value !== 'object') return value;
+    if (typeof structuredClone === 'function') {
+        return structuredClone(value);
+    }
+    return JSON.parse(JSON.stringify(value));
+}
 
 // ===================== FIREBASE INITIALISATION =====================
 const firebaseConfig = {
@@ -1040,16 +1050,19 @@ const DB = {
     get(key) {
         const data = memoryStore[key];
         if (!Array.isArray(data)) return [];
-        return JSON.parse(JSON.stringify(data));
+        return cloneData(data);
     },
     set(key, val) {
         // Capture previous items before overwriting the cache so we can
         // detect deletions without a Firestore read round-trip.
         const prev = this.get(key);
-        const next = Array.isArray(val) ? JSON.parse(JSON.stringify(val)) : [];
+        const next = Array.isArray(val) ? cloneData(val) : [];
         memoryStore[key] = next;
         if (!firestoreDB) {
-            console.warn('Firestore unavailable; changes are not persisted.');
+            if (!firestoreUnavailableWarned) {
+                console.warn('Firestore unavailable; changes are not persisted.');
+                firestoreUnavailableWarned = true;
+            }
             return;
         }
         // Upsert every item in the new list (create or overwrite by id)
@@ -1066,24 +1079,27 @@ const DB = {
         const fallback = def === undefined ? {} : def;
         if (key === 'settings') {
             if (!settingsStore || Object.keys(settingsStore).length === 0) {
-                return JSON.parse(JSON.stringify(fallback));
+                return cloneData(fallback);
             }
-            return JSON.parse(JSON.stringify(settingsStore));
+            return cloneData(settingsStore);
         }
         if (objectStore[key] === undefined) {
-            return JSON.parse(JSON.stringify(fallback));
+            return cloneData(fallback);
         }
-        return JSON.parse(JSON.stringify(objectStore[key]));
+        return cloneData(objectStore[key]);
     },
     setObj(key, val) {
-        const next = JSON.parse(JSON.stringify(val === undefined ? {} : val));
+        const next = cloneData(val === undefined ? {} : val);
         if (key === 'settings') {
             settingsStore = next;
         } else {
             objectStore[key] = next;
         }
         if (!firestoreDB) {
-            console.warn('Firestore unavailable; settings are not persisted.');
+            if (!firestoreUnavailableWarned) {
+                console.warn('Firestore unavailable; settings are not persisted.');
+                firestoreUnavailableWarned = true;
+            }
             return;
         }
         const docId = key === 'settings' ? SETTINGS_DOC_ID : key;
@@ -1135,16 +1151,28 @@ function initAuth() {
                     onLoginSuccess();
                 }
             } else {
-                document.getElementById('login-overlay').classList.remove('hidden');
+                currentUser = null;
+                currentRole = null;
+                resetCachedData();
+                showLoginOverlay();
             }
         });
     } else {
-        document.getElementById('login-overlay').classList.remove('hidden');
+        showLoginOverlay();
     }
 }
 
-function checkOfflineSession() {
+function showLoginOverlay() {
     document.getElementById('login-overlay').classList.remove('hidden');
+}
+
+function resetCachedData() {
+    COLLECTIONS.forEach(key => {
+        memoryStore[key] = [];
+    });
+    settingsStore = {};
+    Object.keys(objectStore).forEach(key => delete objectStore[key]);
+    firestoreUnavailableWarned = false;
 }
 
 function onLoginSuccess() {
@@ -1206,6 +1234,7 @@ function doLogout() {
     currentUser = null;
     currentRole = null;
     if (firebaseAuth) { try { signOut(firebaseAuth); } catch(e) {} }
+    resetCachedData();
     document.getElementById('login-overlay').classList.remove('hidden');
     document.getElementById('header-user').textContent = '';
 }
