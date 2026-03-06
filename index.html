@@ -302,7 +302,7 @@
         <input type="password" id="login-password" placeholder="Password" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')doLogin()">
         <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
         <p class="form-hint">Sign in with your Firebase account.<br>
-            First-time setup: create an admin in Firebase Authentication, then manage users in Settings → User Management.</p>
+            First-time setup: create an admin in Firebase Console → Authentication. After your first sign-in, manage users in Settings → User Management.</p>
     </div>
 </div>
 
@@ -974,16 +974,23 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
 const SETTINGS_DOC_ID = 'org';
-const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
+const SETTINGS_STORE_KEY = 'settings';
+const memoryStore = {};
+COLLECTIONS.forEach(key => { memoryStore[key] = []; });
 const objectStore = {};
-let settingsStore = {};
 let firestoreUnavailableWarned = false;
+let cacheGeneration = 0;
+const hasStructuredClone = typeof structuredClone === 'function';
 
 function cloneData(value) {
     if (value === undefined || value === null) return value;
     if (typeof value !== 'object') return value;
-    if (typeof structuredClone === 'function') {
-        return structuredClone(value);
+    if (hasStructuredClone) {
+        try {
+            return structuredClone(value);
+        } catch (err) {
+            return JSON.parse(JSON.stringify(value));
+        }
     }
     return JSON.parse(JSON.stringify(value));
 }
@@ -1020,24 +1027,23 @@ try {
     firebaseAuth = getAuth(app);
 
     // Load each collection from Firestore into the in-memory cache on startup
-    COLLECTIONS.forEach(col => {
+    const loadGeneration = cacheGeneration;
+    const loadPromises = COLLECTIONS.map(col =>
         getDocs(collection(firestoreDB, col)).then(snapshot => {
-            if (!snapshot.empty) {
-                const items = snapshot.docs.map(d => d.data());
-                memoryStore[col] = items;
-                // Re-render whichever section is currently active
-                const active = document.querySelector('.section.active');
-                if (active) showSection(active.id);
-            }
-        }).catch(() => {});
-    });
-    getDoc(doc(firestoreDB, 'settings', SETTINGS_DOC_ID)).then(docSnap => {
-        if (docSnap.exists()) {
-            settingsStore = docSnap.data();
-            const active = document.querySelector('.section.active');
-            if (active) showSection(active.id);
-        }
+            if (loadGeneration !== cacheGeneration) return;
+            const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
+            memoryStore[col] = cloneData(items);
+        }).catch(() => {})
+    );
+    const settingsPromise = getDoc(doc(firestoreDB, 'settings', SETTINGS_DOC_ID)).then(docSnap => {
+        if (loadGeneration !== cacheGeneration) return;
+        objectStore[SETTINGS_STORE_KEY] = cloneData(docSnap.exists() ? docSnap.data() : {});
     }).catch(() => {});
+    Promise.allSettled([...loadPromises, settingsPromise]).then(() => {
+        if (loadGeneration !== cacheGeneration) return;
+        const active = document.querySelector('.section.active');
+        if (active) showSection(active.id);
+    });
 } catch (e) {
     console.warn('Firebase initialisation failed – persistence unavailable.', e);
 }
@@ -1048,8 +1054,7 @@ try {
 // devices and browsers without relying on localStorage.
 const DB = {
     get(key) {
-        const data = memoryStore[key];
-        if (!Array.isArray(data)) return [];
+        const data = Array.isArray(memoryStore[key]) ? memoryStore[key] : [];
         return cloneData(data);
     },
     set(key, val) {
@@ -1066,23 +1071,18 @@ const DB = {
             return;
         }
         // Upsert every item in the new list (create or overwrite by id)
-        next.forEach(item => {
-            setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
-        });
+        const upserts = next.map(item =>
+            setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {})
+        );
         // Delete items that were removed from the list
         const newIds = new Set(next.map(item => String(item.id)));
-        prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
-            deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
-        });
+        const deletions = prev
+            .filter(item => !newIds.has(String(item.id)))
+            .map(item => deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {}));
+        return Promise.allSettled([...upserts, ...deletions]);
     },
     getObj(key, def) {
         const fallback = def === undefined ? {} : def;
-        if (key === 'settings') {
-            if (!settingsStore || Object.keys(settingsStore).length === 0) {
-                return cloneData(fallback);
-            }
-            return cloneData(settingsStore);
-        }
         if (objectStore[key] === undefined) {
             return cloneData(fallback);
         }
@@ -1090,11 +1090,7 @@ const DB = {
     },
     setObj(key, val) {
         const next = cloneData(val === undefined ? {} : val);
-        if (key === 'settings') {
-            settingsStore = next;
-        } else {
-            objectStore[key] = next;
-        }
+        objectStore[key] = next;
         if (!firestoreDB) {
             if (!firestoreUnavailableWarned) {
                 console.warn('Firestore unavailable; settings are not persisted.');
@@ -1102,8 +1098,10 @@ const DB = {
             }
             return;
         }
-        const docId = key === 'settings' ? SETTINGS_DOC_ID : key;
-        setDoc(doc(firestoreDB, 'settings', docId), next).catch(() => {});
+        const docId = key === SETTINGS_STORE_KEY ? SETTINGS_DOC_ID : key;
+        return setDoc(doc(firestoreDB, 'settings', docId), next).catch(err => {
+            console.warn('Failed to save settings to Firestore.', err);
+        });
     }
 };
 
@@ -1167,12 +1165,11 @@ function showLoginOverlay() {
 }
 
 function resetCachedData() {
-    COLLECTIONS.forEach(key => {
-        memoryStore[key] = [];
-    });
-    settingsStore = {};
+    Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
+    COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
     firestoreUnavailableWarned = false;
+    cacheGeneration += 1;
 }
 
 function onLoginSuccess() {
@@ -1222,7 +1219,16 @@ async function doLogin() {
         if (['auth/wrong-password','auth/user-not-found','auth/invalid-credential','auth/invalid-email'].includes(e.code)) {
             errEl.textContent = 'Invalid email or password.';
         } else {
-            errEl.textContent = 'Unable to reach Firebase Authentication. Please try again.';
+            const code = e?.code || null;
+            if (code === 'auth/network-request-failed') {
+                errEl.textContent = 'Network error: check your connection and try again.';
+            } else if (code === 'auth/too-many-requests') {
+                errEl.textContent = 'Too many attempts. Please wait a moment and try again.';
+            } else if (code) {
+                errEl.textContent = `Sign in failed (${code}). Contact an administrator to verify Firebase Authentication.`;
+            } else {
+                errEl.textContent = 'Unable to reach Firebase Authentication. Please try again.';
+            }
         }
         errEl.style.display = 'block';
         btnEl.disabled = false;
