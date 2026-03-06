@@ -301,8 +301,8 @@
         <input type="email" id="login-email" placeholder="Email address" style="margin-bottom:12px;" onkeydown="if(event.key==='Enter')doLogin()">
         <input type="password" id="login-password" placeholder="Password" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')doLogin()">
         <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">Sign In</button>
-        <p class="form-hint">Configure credentials in Settings → User Management.<br>
-            Default: admin@orphanage.local / Admin@123</p>
+        <p class="form-hint">Sign in with your Firebase account.<br>
+            Configure users in Settings → User Management.</p>
     </div>
 </div>
 
@@ -650,7 +650,7 @@
                 ℹ️ Firebase Authentication is active. Users listed below are managed via Firebase Auth + Firestore.
             </div>
             <div id="offline-auth-notice" class="alert alert-warning" style="display:none;">
-                ⚠️ Firebase is not configured. Managing offline demo credentials only.
+                ⚠️ Firebase Authentication is required. Offline demo mode is disabled.
             </div>
             <div class="table-responsive">
                 <table id="user-management-table">
@@ -670,10 +670,10 @@
             </div>
         </div>
 
-        <!-- ===== Offline Credentials (fallback) ===== -->
+        <!-- ===== Offline Credentials (deprecated) ===== -->
         <div class="card" id="offline-credentials-card">
-            <h3>🔐 Offline / Demo Credentials</h3>
-            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Used when Firebase Authentication is not active. In production, use the User Management panel above to create Firebase Auth users.</p>
+            <h3>🔐 Offline / Demo Credentials (Deprecated)</h3>
+            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Offline credentials are no longer used. Configure Firebase Authentication users in the panel above.</p>
             <div class="form-grid">
                 <div><label>Admin Email</label><input type="email" id="admin-email" placeholder="admin@orphanage.local"></div>
                 <div><label>Admin Password</label><input type="password" id="admin-pass" placeholder="Leave blank to keep current"></div>
@@ -973,6 +973,10 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-s
 
 // Collections managed by this app (declared first so Firebase init can reference it)
 const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
+const SETTINGS_DOC_ID = 'org';
+const memoryStore = Object.fromEntries(COLLECTIONS.map(key => [key, []]));
+const objectStore = {};
+let settingsStore = {};
 
 // ===================== FIREBASE INITIALISATION =====================
 const firebaseConfig = {
@@ -1005,56 +1009,85 @@ try {
     firebaseStorage = getStorage(app);
     firebaseAuth = getAuth(app);
 
-    // Load each collection from Firestore into localStorage on startup
+    // Load each collection from Firestore into the in-memory cache on startup
     COLLECTIONS.forEach(col => {
         getDocs(collection(firestoreDB, col)).then(snapshot => {
             if (!snapshot.empty) {
                 const items = snapshot.docs.map(d => d.data());
-                localStorage.setItem('oms_' + col, JSON.stringify(items));
+                memoryStore[col] = items;
                 // Re-render whichever section is currently active
                 const active = document.querySelector('.section.active');
                 if (active) showSection(active.id);
             }
         }).catch(() => {});
     });
-    getDoc(doc(firestoreDB, 'settings', 'org')).then(docSnap => {
+    getDoc(doc(firestoreDB, 'settings', SETTINGS_DOC_ID)).then(docSnap => {
         if (docSnap.exists()) {
-            localStorage.setItem('oms_settings', JSON.stringify(docSnap.data()));
+            settingsStore = docSnap.data();
+            const active = document.querySelector('.section.active');
+            if (active) showSection(active.id);
         }
     }).catch(() => {});
 } catch (e) {
-    console.warn('Firebase initialisation skipped – running in offline mode.', e);
+    console.warn('Firebase initialisation failed – persistence unavailable.', e);
 }
 
 // ===================== DATA STORE =====================
-// localStorage provides instant synchronous reads required by all render
-// functions.  Every write is also mirrored to Firestore when available so
-// that data persists across devices and browsers.
+// In-memory cache provides instant synchronous reads required by all render
+// functions. Every write is mirrored to Firestore so data persists across
+// devices and browsers without relying on localStorage.
 const DB = {
-    get(key) { try { return JSON.parse(localStorage.getItem('oms_' + key) || '[]'); } catch(e) { return []; } },
+    get(key) {
+        const data = memoryStore[key];
+        if (!Array.isArray(data)) return [];
+        return JSON.parse(JSON.stringify(data));
+    },
     set(key, val) {
-        // Capture previous items before overwriting localStorage so we can
+        // Capture previous items before overwriting the cache so we can
         // detect deletions without a Firestore read round-trip.
         const prev = this.get(key);
-        localStorage.setItem('oms_' + key, JSON.stringify(val));
-        if (firestoreDB) {
-            // Upsert every item in the new list (create or overwrite by id)
-            val.forEach(item => {
-                setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
-            });
-            // Delete items that were removed from the list
-            const newIds = new Set(val.map(item => String(item.id)));
-            prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
-                deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
-            });
+        const next = Array.isArray(val) ? JSON.parse(JSON.stringify(val)) : [];
+        memoryStore[key] = next;
+        if (!firestoreDB) {
+            console.warn('Firestore unavailable; changes are not persisted.');
+            return;
         }
+        // Upsert every item in the new list (create or overwrite by id)
+        next.forEach(item => {
+            setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {});
+        });
+        // Delete items that were removed from the list
+        const newIds = new Set(next.map(item => String(item.id)));
+        prev.filter(item => !newIds.has(String(item.id))).forEach(item => {
+            deleteDoc(doc(firestoreDB, key, String(item.id))).catch(() => {});
+        });
     },
-    getObj(key, def) { try { return JSON.parse(localStorage.getItem('oms_' + key) || JSON.stringify(def)); } catch(e) { return def; } },
-    setObj(key, val) {
-        localStorage.setItem('oms_' + key, JSON.stringify(val));
-        if (firestoreDB) {
-            setDoc(doc(firestoreDB, 'settings', key), val).catch(() => {});
+    getObj(key, def) {
+        const fallback = def === undefined ? {} : def;
+        if (key === 'settings') {
+            if (!settingsStore || Object.keys(settingsStore).length === 0) {
+                return JSON.parse(JSON.stringify(fallback));
+            }
+            return JSON.parse(JSON.stringify(settingsStore));
         }
+        if (objectStore[key] === undefined) {
+            return JSON.parse(JSON.stringify(fallback));
+        }
+        return JSON.parse(JSON.stringify(objectStore[key]));
+    },
+    setObj(key, val) {
+        const next = JSON.parse(JSON.stringify(val === undefined ? {} : val));
+        if (key === 'settings') {
+            settingsStore = next;
+        } else {
+            objectStore[key] = next;
+        }
+        if (!firestoreDB) {
+            console.warn('Firestore unavailable; settings are not persisted.');
+            return;
+        }
+        const docId = key === 'settings' ? SETTINGS_DOC_ID : key;
+        setDoc(doc(firestoreDB, 'settings', docId), next).catch(() => {});
     }
 };
 
@@ -1102,29 +1135,15 @@ function initAuth() {
                     onLoginSuccess();
                 }
             } else {
-                checkOfflineSession();
+                document.getElementById('login-overlay').classList.remove('hidden');
             }
         });
     } else {
-        checkOfflineSession();
+        document.getElementById('login-overlay').classList.remove('hidden');
     }
 }
 
 function checkOfflineSession() {
-    const raw = sessionStorage.getItem('oms_session');
-    if (raw) {
-        try {
-            const session = JSON.parse(raw);
-            const role = session.role;
-            if (ALLOWED_ROLES.includes(role)) {
-                currentUser = session;
-                currentRole = role;
-                onLoginSuccess();
-                return;
-            }
-        } catch(e) {}
-        sessionStorage.removeItem('oms_session'); // discard invalid session
-    }
     document.getElementById('login-overlay').classList.remove('hidden');
 }
 
@@ -1160,48 +1179,30 @@ async function doLogin() {
     btnEl.disabled = true;
     btnEl.textContent = 'Signing in…';
 
-    if (firebaseAuth) {
-        try {
-            await signInWithEmailAndPassword(firebaseAuth, email, password);
-            return; // onAuthStateChanged handles success
-        } catch(e) {
-            if (['auth/wrong-password','auth/user-not-found','auth/invalid-credential','auth/invalid-email'].includes(e.code)) {
-                errEl.textContent = 'Invalid email or password.';
-                errEl.style.display = 'block';
-                btnEl.disabled = false;
-                btnEl.textContent = 'Sign In';
-                return;
-            }
-            // Other error (e.g. network/config) – fall through to offline auth
-        }
+    if (!firebaseAuth) {
+        errEl.textContent = 'Firebase Authentication is required to sign in.';
+        errEl.style.display = 'block';
+        btnEl.disabled = false;
+        btnEl.textContent = 'Sign In';
+        return;
     }
 
-    // Offline / demo auth
-    const settings = DB.getObj('settings', {});
-    const adminEmail   = (settings.adminEmail || 'admin@orphanage.local').toLowerCase();
-    const adminHash    = settings.adminPassHash  || DEFAULT_ADMIN_HASH;
-    const mgrEmail     = (settings.managerEmail || 'manager@orphanage.local').toLowerCase();
-    const mgrHash      = settings.managerPassHash || DEFAULT_MANAGER_HASH;
-    const inputHash    = await hashPassword(password);
-    let role = null;
-    if (email.toLowerCase() === adminEmail && inputHash === adminHash) role = 'admin';
-    else if (email.toLowerCase() === mgrEmail && inputHash === mgrHash) role = 'manager';
-    btnEl.disabled = false;
-    btnEl.textContent = 'Sign In';
-    if (role) {
-        const session = { email, name: email.split('@')[0], role };
-        sessionStorage.setItem('oms_session', JSON.stringify(session));
-        currentUser = session;
-        currentRole = role;
-        onLoginSuccess();
-    } else {
-        errEl.textContent = 'Invalid email or password.';
+    try {
+        await signInWithEmailAndPassword(firebaseAuth, email, password);
+        return; // onAuthStateChanged handles success
+    } catch(e) {
+        if (['auth/wrong-password','auth/user-not-found','auth/invalid-credential','auth/invalid-email'].includes(e.code)) {
+            errEl.textContent = 'Invalid email or password.';
+        } else {
+            errEl.textContent = 'Unable to reach Firebase Authentication. Please try again.';
+        }
         errEl.style.display = 'block';
+        btnEl.disabled = false;
+        btnEl.textContent = 'Sign In';
     }
 }
 
 function doLogout() {
-    sessionStorage.removeItem('oms_session');
     currentUser = null;
     currentRole = null;
     if (firebaseAuth) { try { signOut(firebaseAuth); } catch(e) {} }
@@ -2168,7 +2169,9 @@ function loadUserManagement() {
     } else {
         fbNotice.style.display = 'none';
         offNotice.style.display = 'flex';
-        renderOfflineUsers();
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">Firebase Authentication is required to manage users.</td></tr>';
+        }
     }
 }
 
@@ -2358,13 +2361,8 @@ async function saveUser() {
             closeModal('user-modal');
             loadFirebaseUsers();
         } else {
-            // Offline mode – persist to localStorage only
-            const offlineUsers = DB.getObj('offlineUsers', []);
-            offlineUsers.push({ email, displayName: name, role, uid: 'offline-' + genId() });
-            DB.setObj('offlineUsers', offlineUsers);
-            toast('User added (offline mode).');
-            closeModal('user-modal');
-            renderOfflineUsers();
+            errEl.textContent = 'Firebase must be configured to add users.';
+            errEl.style.display = 'flex';
         }
     } catch (err) {
         errEl.textContent = 'Error: ' + err.message;
