@@ -344,7 +344,7 @@
         <div class="card">
             <h2>Welcome to the Bophelong Childrens Home Management System</h2>
             <p style="color:#555; line-height:1.6; margin-bottom:12px;">
-                This system provides comprehensive tools for managing all aspects of an orphanage including child records, medical records, staff details, donations, adoptions, events, and inventory. All data is saved locally in your browser.
+                This system provides comprehensive tools for managing all aspects of an orphanage including child records, medical records, staff details, donations, adoptions, events, and inventory. All data is securely stored and synced with Firebase Firestore.
             </p>
             <div id="home-alerts"></div>
             <div class="quick-nav">
@@ -650,7 +650,7 @@
                 ℹ️ Firebase Authentication is active. Users listed below are managed via Firebase Auth + Firestore.
             </div>
             <div id="offline-auth-notice" class="alert alert-warning" style="display:none;">
-                ⚠️ Firebase Authentication is required. Offline demo mode is disabled.
+                ⚠️ Firebase Authentication is required. Connect to Firebase to manage users.
             </div>
             <div class="table-responsive">
                 <table id="user-management-table">
@@ -670,20 +670,6 @@
             </div>
         </div>
 
-        <!-- ===== Offline Credentials (deprecated) ===== -->
-        <div class="card" id="offline-credentials-card">
-            <h3>🔐 Offline / Demo Credentials (Deprecated)</h3>
-            <p style="color:#888; font-size:0.85rem; margin-bottom:14px;">Offline credentials are no longer used. Configure Firebase Authentication users in the panel above.</p>
-            <div class="form-grid">
-                <div><label>Admin Email</label><input type="email" id="admin-email" placeholder="admin@orphanage.local"></div>
-                <div><label>Admin Password</label><input type="password" id="admin-pass" placeholder="Leave blank to keep current"></div>
-                <div><label>Manager Email</label><input type="email" id="manager-email" placeholder="manager@orphanage.local"></div>
-                <div><label>Manager Password</label><input type="password" id="manager-pass" placeholder="Leave blank to keep current"></div>
-            </div>
-            <div style="margin-top:14px;">
-                <button class="btn btn-primary" onclick="saveUserAccounts()">💾 Save Offline Credentials</button>
-            </div>
-        </div>
     </div>
 
 </div><!-- end .container -->
@@ -968,7 +954,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { collection, deleteDoc, doc, enableIndexedDbPersistence, enableMultiTabIndexedDbPersistence, getDoc, getDocs, getFirestore, onSnapshot, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
 // Collections managed by this app (declared first so Firebase init can reference it)
@@ -980,6 +966,10 @@ COLLECTIONS.forEach(key => { memoryStore[key] = []; });
 const objectStore = {};
 let firestoreUnavailableWarned = false;
 let cacheGeneration = 0;
+let syncUnsubscribers = [];
+let scheduledRender = null;
+let firestoreReady = Promise.resolve();
+const mismatchWarnings = new Set();
 const hasStructuredClone = typeof structuredClone === 'function';
 
 function cloneData(value) {
@@ -993,6 +983,81 @@ function cloneData(value) {
         }
     }
     return JSON.parse(JSON.stringify(value));
+}
+
+function scheduleActiveRender() {
+    if (scheduledRender) return;
+    scheduledRender = requestAnimationFrame(() => {
+        scheduledRender = null;
+        const active = document.querySelector('.section.active');
+        if (!active || typeof showSection !== 'function') return;
+        try {
+            showSection(active.id);
+        } catch (err) {
+            console.warn('Failed to render active section.', err);
+        }
+    });
+}
+
+function stopFirestoreSync() {
+    syncUnsubscribers.forEach(unsub => {
+        try { unsub(); } catch (err) {
+            console.warn('Failed to unsubscribe from Firestore sync listener; this may leak memory. Reload if performance degrades.', err);
+        }
+    });
+    syncUnsubscribers = [];
+    if (scheduledRender) {
+        cancelAnimationFrame(scheduledRender);
+        scheduledRender = null;
+    }
+    cacheGeneration += 1;
+}
+
+function startFirestoreSync() {
+    if (!firestoreDB || !currentUser) return;
+    stopFirestoreSync();
+    const syncGeneration = cacheGeneration;
+    const startSync = () => {
+        if (syncGeneration !== cacheGeneration || !firestoreDB || !currentUser) return;
+        const collectionUnsubs = COLLECTIONS.map(col =>
+            onSnapshot(collection(firestoreDB, col), snapshot => {
+                if (syncGeneration !== cacheGeneration) return;
+                const items = snapshot.empty ? [] : snapshot.docs.map(d => {
+                    const data = d.data();
+                    const docId = d.id;
+                    if (data && data.id !== undefined && data.id !== null) {
+                        const normalizedId = String(data.id);
+                        if (normalizedId !== String(docId)) {
+                            const warningKey = `${col}:${docId}`;
+                            if (!mismatchWarnings.has(warningKey)) {
+                                console.warn(`Firestore ${col} document id mismatch: ${docId} (string) vs data.id ${data.id} (${typeof data.id}).`);
+                                mismatchWarnings.add(warningKey);
+                            }
+                        }
+                        return data;
+                    }
+                    // Preserve numeric IDs used by the app while still supporting string IDs from Firestore.
+                    const numericId = Number(docId);
+                    const resolvedId = Number.isNaN(numericId) ? docId : numericId;
+                    return data ? { ...data, id: resolvedId } : { id: resolvedId };
+                });
+                memoryStore[col] = cloneData(items);
+                scheduleActiveRender();
+            }, err => {
+                console.warn(`Failed to sync ${col} collection from Firestore. Check connectivity and Firestore rules.`, err);
+            })
+        );
+        const settingsRef = doc(firestoreDB, 'settings', SETTINGS_DOC_ID);
+        const settingsUnsub = onSnapshot(settingsRef, docSnap => {
+            if (syncGeneration !== cacheGeneration) return;
+            objectStore[SETTINGS_STORE_KEY] = cloneData(docSnap.exists() ? docSnap.data() : {});
+            scheduleActiveRender();
+        }, err => {
+            console.warn('Failed to sync settings document from Firestore. Check connectivity and Firestore rules.', err);
+        });
+        syncUnsubscribers = [...collectionUnsubs, settingsUnsub];
+    };
+    firestoreReady.then(startSync);
 }
 
 // ===================== FIREBASE INITIALISATION =====================
@@ -1025,33 +1090,35 @@ try {
     firestoreDB = getFirestore(app);
     firebaseStorage = getStorage(app);
     firebaseAuth = getAuth(app);
-
-    // Load each collection from Firestore into the in-memory cache on startup
-    const loadGeneration = cacheGeneration;
-    const loadPromises = COLLECTIONS.map(col =>
-        getDocs(collection(firestoreDB, col)).then(snapshot => {
-            if (loadGeneration !== cacheGeneration) return;
-            const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
-            memoryStore[col] = cloneData(items);
-        }).catch(() => {})
-    );
-    const settingsPromise = getDoc(doc(firestoreDB, 'settings', SETTINGS_DOC_ID)).then(docSnap => {
-        if (loadGeneration !== cacheGeneration) return;
-        objectStore[SETTINGS_STORE_KEY] = cloneData(docSnap.exists() ? docSnap.data() : {});
-    }).catch(() => {});
-    Promise.allSettled([...loadPromises, settingsPromise]).then(() => {
-        if (loadGeneration !== cacheGeneration) return;
-        const active = document.querySelector('.section.active');
-        if (active) showSection(active.id);
-    });
+    const enableFirestorePersistence = async () => {
+        try {
+            await enableMultiTabIndexedDbPersistence(firestoreDB);
+        } catch (err) {
+            if (err?.code === 'failed-precondition') {
+                console.warn('Multi-tab persistence could not be enabled. To use it, close other tabs and reload. Falling back to single-tab persistence.', err);
+                try {
+                    await enableIndexedDbPersistence(firestoreDB);
+                } catch (innerErr) {
+                    console.warn('Firestore persistence unavailable; offline caching may be disabled.', innerErr);
+                }
+                return;
+            }
+            if (err?.code === 'unimplemented') {
+                console.warn('Firestore persistence is not supported by this browser; offline caching is disabled.', err);
+                return;
+            }
+            console.warn('Failed to enable Firestore persistence. The app will sync online but may not keep offline cache.', err);
+        }
+    };
+    firestoreReady = enableFirestorePersistence();
 } catch (e) {
     console.warn('Firebase initialisation failed – persistence unavailable.', e);
 }
 
 // ===================== DATA STORE =====================
 // In-memory cache provides instant synchronous reads required by all render
-// functions. Every write is mirrored to Firestore so data persists across
-// devices and browsers without relying on localStorage.
+// functions. Firestore remains the source of truth; snapshots keep the cache
+// in sync and every write is mirrored to Firestore for persistence.
 const DB = {
     get(key) {
         const data = Array.isArray(memoryStore[key]) ? memoryStore[key] : [];
@@ -1063,9 +1130,9 @@ const DB = {
         const prev = this.get(key);
         const next = Array.isArray(val) ? cloneData(val) : [];
         memoryStore[key] = next;
-        if (!firestoreDB) {
+        if (!firestoreDB || !currentUser) {
             if (!firestoreUnavailableWarned) {
-                console.warn('Firestore unavailable; changes are not persisted.');
+                console.warn('Firestore unavailable; please sign in to sync changes.');
                 firestoreUnavailableWarned = true;
             }
             return;
@@ -1091,9 +1158,9 @@ const DB = {
     setObj(key, val) {
         const next = cloneData(val === undefined ? {} : val);
         objectStore[key] = next;
-        if (!firestoreDB) {
+        if (!firestoreDB || !currentUser) {
             if (!firestoreUnavailableWarned) {
-                console.warn('Firestore unavailable; settings are not persisted.');
+                console.warn('Firestore unavailable; please sign in to sync settings.');
                 firestoreUnavailableWarned = true;
             }
             return;
@@ -1111,21 +1178,14 @@ function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
 let currentUser = null;
 let currentRole = null; // 'admin' or 'manager'
 
-// SHA-256 of default offline passwords (Admin@123 / Manager@123)
-const DEFAULT_ADMIN_HASH   = 'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7';
-const DEFAULT_MANAGER_HASH = 'e8392925a98c9c22795d1fc5d0dfee5b9a6943f6b768ec5a2a0c077e5ed119cf';
 const ALLOWED_ROLES = ['admin', 'manager'];
-
-async function hashPassword(pw) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 function initAuth() {
     if (firebaseAuth) {
         onAuthStateChanged(firebaseAuth, function(user) {
             if (user) {
                 currentUser = user;
+                startFirestoreSync();
                 if (firestoreDB) {
                     getDoc(doc(firestoreDB, 'users', user.uid)).then(docSnap => {
                         if (docSnap.exists()) {
@@ -1165,11 +1225,12 @@ function showLoginOverlay() {
 }
 
 function resetCachedData() {
+    stopFirestoreSync();
+    // stopFirestoreSync already increments cacheGeneration; resetCachedData clears local caches without a second increment.
     Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
     COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
     firestoreUnavailableWarned = false;
-    cacheGeneration += 1;
 }
 
 function onLoginSuccess() {
@@ -2146,31 +2207,7 @@ function loadSettings() {
     document.getElementById('org-contact').value = s.orgContact || '';
     document.getElementById('org-email').value = s.orgEmail || '';
     document.getElementById('backup-frequency').value = s.backupFrequency || 'Daily';
-    loadUserAccounts();
     loadUserManagement();
-}
-
-function loadUserAccounts() {
-    const s = DB.getObj('settings', {});
-    document.getElementById('admin-email').value = s.adminEmail || 'admin@orphanage.local';
-    document.getElementById('manager-email').value = s.managerEmail || 'manager@orphanage.local';
-    // Password fields intentionally left blank
-}
-
-async function saveUserAccounts() {
-    const settings = DB.getObj('settings', {});
-    const adminEmail = document.getElementById('admin-email').value.trim();
-    const adminPass  = document.getElementById('admin-pass').value;
-    const mgrEmail   = document.getElementById('manager-email').value.trim();
-    const mgrPass    = document.getElementById('manager-pass').value;
-    if (adminEmail) settings.adminEmail = adminEmail;
-    if (adminPass)  settings.adminPassHash  = await hashPassword(adminPass);
-    if (mgrEmail)   settings.managerEmail   = mgrEmail;
-    if (mgrPass)    settings.managerPassHash = await hashPassword(mgrPass);
-    DB.setObj('settings', settings);
-    document.getElementById('admin-pass').value = '';
-    document.getElementById('manager-pass').value = '';
-    toast('User accounts saved!');
 }
 
 function clearAllData() {
@@ -2208,28 +2245,6 @@ function loadUserManagement() {
             tbody.innerHTML = '<tr><td colspan="5" style="color:#888; text-align:center;">Firebase Authentication is required to manage users.</td></tr>';
         }
     }
-}
-
-function renderOfflineUsers() {
-    const s = DB.getObj('settings', {});
-    const adminEmail = s.adminEmail || 'admin@orphanage.local';
-    const mgrEmail   = s.managerEmail || 'manager@orphanage.local';
-    const tbody = document.getElementById('user-management-tbody');
-    tbody.innerHTML = `
-        <tr>
-            <td>${escapeHtml(adminEmail)}</td>
-            <td>Admin</td>
-            <td><span class="badge badge-danger">Admin</span></td>
-            <td><span class="badge badge-success">Active</span></td>
-            <td><em style="color:#888; font-size:0.82rem;">Edit via Offline Credentials below</em></td>
-        </tr>
-        <tr>
-            <td>${escapeHtml(mgrEmail)}</td>
-            <td>Manager</td>
-            <td><span class="badge badge-info">Manager</span></td>
-            <td><span class="badge badge-success">Active</span></td>
-            <td><em style="color:#888; font-size:0.82rem;">Edit via Offline Credentials below</em></td>
-        </tr>`;
 }
 
 function loadFirebaseUsers() {
@@ -2624,7 +2639,6 @@ Object.assign(window, {
     saveSettings,
     clearAllData,
     openAddUserModal,
-    saveUserAccounts,
     saveUser,
     saveChild,
     saveMedical,
