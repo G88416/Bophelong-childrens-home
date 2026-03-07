@@ -1001,7 +1001,7 @@ function scheduleActiveRender() {
 function stopFirestoreSync() {
     syncUnsubscribers.forEach(unsub => {
         try { unsub(); } catch (err) {
-            console.warn('Failed to unsubscribe from Firestore sync; listener may remain active.', err);
+            console.warn('Failed to unsubscribe from Firestore sync listener; this may cause duplicate updates.', err);
         }
     });
     syncUnsubscribers = [];
@@ -1031,7 +1031,7 @@ function startFirestoreSync() {
                 memoryStore[col] = cloneData(items);
                 scheduleActiveRender();
             }, err => {
-                console.warn(`Failed to sync ${col} from Firestore. Check connectivity and Firestore rules.`, err);
+                console.warn(`Failed to sync ${col} collection from Firestore. Check connectivity and Firestore rules.`, err);
             })
         );
         const settingsRef = doc(firestoreDB, 'settings', SETTINGS_DOC_ID);
@@ -1040,7 +1040,7 @@ function startFirestoreSync() {
             objectStore[SETTINGS_STORE_KEY] = cloneData(docSnap.exists() ? docSnap.data() : {});
             scheduleActiveRender();
         }, err => {
-            console.warn('Failed to sync settings from Firestore. Check connectivity and Firestore rules.', err);
+            console.warn('Failed to sync settings document from Firestore. Check connectivity and Firestore rules.', err);
         });
         syncUnsubscribers = [...collectionUnsubs, settingsUnsub];
     };
@@ -1085,7 +1085,7 @@ try {
                 try {
                     await enableIndexedDbPersistence(firestoreDB);
                 } catch (innerErr) {
-                    console.warn('Firestore persistence unavailable; the app will still work but may not cache data offline. Close other tabs to retry.', innerErr);
+                    console.warn('Firestore persistence unavailable; close other tabs and reload to retry. Offline caching may be disabled.', innerErr);
                 }
                 return;
             }
@@ -1212,7 +1212,8 @@ function showLoginOverlay() {
 
 function resetCachedData() {
     stopFirestoreSync();
-    // stopFirestoreSync handles cache generation; resetCachedData clears local caches.
+    // stopFirestoreSync handles cache generation to avoid duplicate increments.
+    // resetCachedData clears local caches.
     Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
     COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
