@@ -989,7 +989,12 @@ function scheduleActiveRender() {
     scheduledRender = requestAnimationFrame(() => {
         scheduledRender = null;
         const active = document.querySelector('.section.active');
-        if (active) showSection(active.id);
+        if (!active || typeof showSection !== 'function') return;
+        try {
+            showSection(active.id);
+        } catch (err) {
+            console.warn('Failed to render active section.', err);
+        }
     });
 }
 
@@ -1016,7 +1021,13 @@ function startFirestoreSync() {
         const collectionUnsubs = COLLECTIONS.map(col =>
             onSnapshot(collection(firestoreDB, col), snapshot => {
                 if (syncGeneration !== cacheGeneration) return;
-                const items = snapshot.empty ? [] : snapshot.docs.map(d => d.data());
+                const items = snapshot.empty ? [] : snapshot.docs.map(d => {
+                    const data = d.data();
+                    if (data && data.id !== undefined && data.id !== null) {
+                        return data;
+                    }
+                    return { id: d.id, ...data };
+                });
                 memoryStore[col] = cloneData(items);
                 scheduleActiveRender();
             }, err => {
@@ -1074,7 +1085,7 @@ try {
                 try {
                     await enableIndexedDbPersistence(firestoreDB);
                 } catch (innerErr) {
-                    console.warn('Firestore persistence unavailable; the app will still work but may not cache data offline.', innerErr);
+                    console.warn('Firestore persistence unavailable; the app will still work but may not cache data offline. Close other tabs to retry.', innerErr);
                 }
                 return;
             }
@@ -1201,7 +1212,7 @@ function showLoginOverlay() {
 
 function resetCachedData() {
     stopFirestoreSync();
-    // stopFirestoreSync handles cache generation and snapshot cleanup.
+    // stopFirestoreSync handles cache generation; resetCachedData clears local caches.
     Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
     COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
