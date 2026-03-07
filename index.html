@@ -1001,7 +1001,7 @@ function scheduleActiveRender() {
 function stopFirestoreSync() {
     syncUnsubscribers.forEach(unsub => {
         try { unsub(); } catch (err) {
-            console.warn('Failed to unsubscribe from Firestore sync listener; this may cause duplicate updates.', err);
+            console.warn('Failed to unsubscribe from Firestore sync listener; this may leak resources.', err);
         }
     });
     syncUnsubscribers = [];
@@ -1023,10 +1023,16 @@ function startFirestoreSync() {
                 if (syncGeneration !== cacheGeneration) return;
                 const items = snapshot.empty ? [] : snapshot.docs.map(d => {
                     const data = d.data();
+                    const docId = d.id;
                     if (data && data.id !== undefined && data.id !== null) {
+                        if (String(data.id) !== docId) {
+                            console.warn(`Firestore ${col} document id mismatch: ${docId} vs data.id ${data.id}.`);
+                        }
                         return data;
                     }
-                    return { id: d.id, ...data };
+                    const numericId = Number(docId);
+                    const resolvedId = Number.isNaN(numericId) ? docId : numericId;
+                    return { id: resolvedId, ...data };
                 });
                 memoryStore[col] = cloneData(items);
                 scheduleActiveRender();
@@ -1085,7 +1091,7 @@ try {
                 try {
                     await enableIndexedDbPersistence(firestoreDB);
                 } catch (innerErr) {
-                    console.warn('Firestore persistence unavailable; close other tabs and reload to retry. Offline caching may be disabled.', innerErr);
+                    console.warn('Firestore persistence unavailable; offline caching may be disabled. If another tab is open, close it and reload to retry.', innerErr);
                 }
                 return;
             }
@@ -1212,8 +1218,7 @@ function showLoginOverlay() {
 
 function resetCachedData() {
     stopFirestoreSync();
-    // stopFirestoreSync handles cache generation to avoid duplicate increments.
-    // resetCachedData clears local caches.
+    // stopFirestoreSync increments cacheGeneration; resetCachedData clears local caches.
     Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
     COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
