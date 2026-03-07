@@ -1002,7 +1002,7 @@ function scheduleActiveRender() {
 function stopFirestoreSync() {
     syncUnsubscribers.forEach(unsub => {
         try { unsub(); } catch (err) {
-            console.warn('Failed to unsubscribe from Firestore sync listener; this may leak resources.', err);
+            console.warn('Failed to unsubscribe from Firestore sync listener; this will leak resources.', err);
         }
     });
     syncUnsubscribers = [];
@@ -1026,15 +1026,17 @@ function startFirestoreSync() {
                     const data = d.data();
                     const docId = d.id;
                     if (data && data.id !== undefined && data.id !== null) {
-                        if (String(data.id) !== docId) {
+                        const normalizedId = String(data.id);
+                        if (normalizedId !== docId) {
                             const warningKey = `${col}:${docId}`;
                             if (!mismatchWarnings.has(warningKey)) {
-                                console.warn(`Firestore ${col} document id mismatch: ${docId} vs data.id ${data.id}.`);
+                                console.warn(`Firestore ${col} document id mismatch: ${docId} (string) vs data.id ${data.id} (${typeof data.id}).`);
                                 mismatchWarnings.add(warningKey);
                             }
                         }
                         return data;
                     }
+                    // Preserve numeric IDs used by the app while still supporting string IDs from Firestore.
                     const numericId = Number(docId);
                     const resolvedId = Number.isNaN(numericId) ? docId : numericId;
                     return { id: resolvedId, ...data };
@@ -1224,7 +1226,7 @@ function showLoginOverlay() {
 
 function resetCachedData() {
     stopFirestoreSync();
-    // stopFirestoreSync already increments cacheGeneration; resetCachedData clears local caches.
+    // stopFirestoreSync already increments cacheGeneration; resetCachedData clears local caches without incrementing again.
     Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
     COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
