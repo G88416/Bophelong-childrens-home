@@ -994,7 +994,11 @@ function scheduleActiveRender() {
 }
 
 function stopFirestoreSync() {
-    syncUnsubscribers.forEach(unsub => { try { unsub(); } catch (err) {} });
+    syncUnsubscribers.forEach(unsub => {
+        try { unsub(); } catch (err) {
+            console.warn('Failed to unsubscribe from Firestore sync.', err);
+        }
+    });
     syncUnsubscribers = [];
     if (scheduledRender) {
         cancelAnimationFrame(scheduledRender);
@@ -1100,6 +1104,7 @@ const DB = {
         // detect deletions without a Firestore read round-trip.
         const prev = this.get(key);
         const next = Array.isArray(val) ? cloneData(val) : [];
+        memoryStore[key] = next;
         if (!firestoreDB || !currentUser) {
             if (!firestoreUnavailableWarned) {
                 console.warn('Firestore unavailable; please sign in to sync changes.');
@@ -1107,7 +1112,6 @@ const DB = {
             }
             return;
         }
-        memoryStore[key] = next;
         // Upsert every item in the new list (create or overwrite by id)
         const upserts = next.map(item =>
             setDoc(doc(firestoreDB, key, String(item.id)), item).catch(() => {})
@@ -1128,6 +1132,7 @@ const DB = {
     },
     setObj(key, val) {
         const next = cloneData(val === undefined ? {} : val);
+        objectStore[key] = next;
         if (!firestoreDB || !currentUser) {
             if (!firestoreUnavailableWarned) {
                 console.warn('Firestore unavailable; please sign in to sync settings.');
@@ -1135,7 +1140,6 @@ const DB = {
             }
             return;
         }
-        objectStore[key] = next;
         const docId = key === SETTINGS_STORE_KEY ? SETTINGS_DOC_ID : key;
         return setDoc(doc(firestoreDB, 'settings', docId), next).catch(err => {
             console.warn('Failed to save settings to Firestore.', err);
@@ -1197,6 +1201,7 @@ function showLoginOverlay() {
 
 function resetCachedData() {
     stopFirestoreSync();
+    // stopFirestoreSync handles cache generation and snapshot cleanup.
     Object.keys(memoryStore).forEach(key => delete memoryStore[key]);
     COLLECTIONS.forEach(key => { memoryStore[key] = []; });
     Object.keys(objectStore).forEach(key => delete objectStore[key]);
