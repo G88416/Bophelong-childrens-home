@@ -996,7 +996,7 @@ function scheduleActiveRender() {
 function stopFirestoreSync() {
     syncUnsubscribers.forEach(unsub => {
         try { unsub(); } catch (err) {
-            console.warn('Failed to unsubscribe from Firestore sync.', err);
+            console.warn('Failed to unsubscribe from Firestore sync; listener may remain active.', err);
         }
     });
     syncUnsubscribers = [];
@@ -1020,7 +1020,7 @@ function startFirestoreSync() {
                 memoryStore[col] = cloneData(items);
                 scheduleActiveRender();
             }, err => {
-                console.warn(`Failed to sync ${col} from Firestore.`, err);
+                console.warn(`Failed to sync ${col} from Firestore. Check connectivity and Firestore rules.`, err);
             })
         );
         const settingsRef = doc(firestoreDB, 'settings', SETTINGS_DOC_ID);
@@ -1029,7 +1029,7 @@ function startFirestoreSync() {
             objectStore[SETTINGS_STORE_KEY] = cloneData(docSnap.exists() ? docSnap.data() : {});
             scheduleActiveRender();
         }, err => {
-            console.warn('Failed to sync settings from Firestore.', err);
+            console.warn('Failed to sync settings from Firestore. Check connectivity and Firestore rules.', err);
         });
         syncUnsubscribers = [...collectionUnsubs, settingsUnsub];
     };
@@ -1074,15 +1074,15 @@ try {
                 try {
                     await enableIndexedDbPersistence(firestoreDB);
                 } catch (innerErr) {
-                    console.warn('Firestore persistence unavailable.', innerErr);
+                    console.warn('Firestore persistence unavailable; the app will still work but may not cache data offline.', innerErr);
                 }
                 return;
             }
             if (err?.code === 'unimplemented') {
-                console.warn('Firestore persistence is not supported by this browser.', err);
+                console.warn('Firestore persistence is not supported by this browser; offline caching is disabled.', err);
                 return;
             }
-            console.warn('Failed to enable Firestore persistence.', err);
+            console.warn('Failed to enable Firestore persistence. The app will sync online but may not keep offline cache.', err);
         }
     };
     firestoreReady = enableFirestorePersistence();
