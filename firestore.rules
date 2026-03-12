@@ -38,6 +38,11 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // Funder engagement records
+    match /funders/{funderId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // Adoption records
     match /adoptions/{adoptionId} {
       allow read, write: if isAuthenticated();
