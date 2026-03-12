@@ -483,10 +483,10 @@
     <!-- Funders Engagement Section -->
     <div id="funders" class="section">
         <div class="card">
-            <h2>🤲 Funders Engagement</h2>
+            <h2>🤲 Funder Hub</h2>
             <button class="btn btn-primary" onclick="openModal('funder-modal')">+ Add Funder</button>
             <div class="search-bar" style="margin-top:14px;">
-                <input type="text" id="funder-search" placeholder="🔍 Search by funder, contact, email..." oninput="renderFunders()">
+                <input type="text" id="funder-search" placeholder="🔍 Search by funder, phone, email..." oninput="renderFunders()">
                 <select id="funder-filter-status" onchange="renderFunders()">
                     <option value="">All Statuses</option>
                     <option>Prospect</option>
@@ -498,11 +498,11 @@
             <div id="funders-alerts"></div>
             <div style="overflow-x:auto;">
                 <table>
-                    <thead><tr><th>#</th><th>Funder</th><th>Contact Person</th><th>Type</th><th>Last Contact</th><th>Next Follow-up</th><th>Status</th><th>Actions</th></tr></thead>
+                    <thead><tr><th scope="col">Funder</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col">Type of Fund</th><th scope="col">Status</th><th scope="col">Website</th><th scope="col">Notes</th></tr></thead>
                     <tbody id="funders-tbody"></tbody>
                 </table>
             </div>
-            <p id="funders-empty" style="color:#888; padding:12px; display:none;">No funder engagement records found.</p>
+            <p id="funders-empty" style="color:#888; padding:12px; display:none;">No funder directory records found.</p>
         </div>
     </div>
 
@@ -867,7 +867,7 @@
             <div class="form-grid">
                 <div><label>Funder / Organization *</label><input type="text" id="f-name" placeholder="Organization or donor name"></div>
                 <div><label>Contact Person</label><input type="text" id="f-contact" placeholder="Primary contact"></div>
-                <div><label>Engagement Type</label>
+                <div><label>Type of Fund</label>
                     <select id="f-type">
                         <option>Foundation</option><option>Corporate CSR</option><option>Grant Maker</option><option>Individual Sponsor</option><option>Other</option>
                     </select>
@@ -879,6 +879,7 @@
                 </div>
                 <div><label>Email</label><input type="email" id="f-email" placeholder="contact@example.com"></div>
                 <div><label>Phone</label><input type="tel" id="f-phone" placeholder="Phone number"></div>
+                <div><label>Website</label><input type="url" id="f-website" placeholder="https://example.org"></div>
                 <div><label>Last Contact Date</label><input type="date" id="f-last-contact"></div>
                 <div><label>Next Follow-up</label><input type="date" id="f-next-followup"></div>
                 <div class="full-width"><label>Notes</label><textarea id="f-notes" placeholder="Key interests, commitments, or meeting notes..."></textarea></div>
@@ -1863,6 +1864,7 @@ function saveFunder() {
         status: document.getElementById('f-status').value,
         email: document.getElementById('f-email').value.trim(),
         phone: document.getElementById('f-phone').value.trim(),
+        website: document.getElementById('f-website').value.trim(),
         lastContact: document.getElementById('f-last-contact').value,
         nextFollowUp: document.getElementById('f-next-followup').value,
         notes: document.getElementById('f-notes').value.trim()
@@ -1877,7 +1879,7 @@ function saveFunder() {
 }
 
 function resetFunderForm() {
-    ['f-name','f-contact','f-email','f-phone','f-last-contact','f-next-followup','f-notes'].forEach(id => document.getElementById(id).value = '');
+    ['f-name','f-contact','f-email','f-phone','f-website','f-last-contact','f-next-followup','f-notes'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('f-type').value = 'Foundation';
     document.getElementById('f-status').value = 'Prospect';
     document.getElementById('funder-edit-id').value = '';
@@ -1895,6 +1897,7 @@ function editFunder(id) {
     document.getElementById('f-status').value = record.status || 'Prospect';
     document.getElementById('f-email').value = record.email || '';
     document.getElementById('f-phone').value = record.phone || '';
+    document.getElementById('f-website').value = record.website || '';
     document.getElementById('f-last-contact').value = record.lastContact || '';
     document.getElementById('f-next-followup').value = record.nextFollowUp || '';
     document.getElementById('f-notes').value = record.notes || '';
@@ -1914,7 +1917,7 @@ function renderFunders() {
     const filterStatus = document.getElementById('funder-filter-status').value;
     const today = new Date().toISOString().slice(0,10);
     let list = DB.get('funders').filter(record => {
-        const haystack = [record.name, record.contact, record.email, record.phone, record.notes].join(' ').toLowerCase();
+        const haystack = [record.name, record.contact, record.email, record.phone, record.website, record.notes].join(' ').toLowerCase();
         return (!search || haystack.includes(search)) && (!filterStatus || record.status === filterStatus);
     });
     list.sort((a, b) => {
@@ -1926,25 +1929,23 @@ function renderFunders() {
     tbody.innerHTML = '';
     document.getElementById('funders-empty').style.display = list.length ? 'none' : 'block';
     const followUpsDue = [];
-    list.forEach((record, i) => {
+    list.forEach(record => {
         const isFollowUpDue = record.nextFollowUp && record.nextFollowUp <= today && record.status !== 'Inactive';
         if (isFollowUpDue) followUpsDue.push(record.name);
+        const recordId = Number(record.id);
+        if (!Number.isFinite(recordId)) return;
         const statusBadge = record.status === 'Active' ? 'badge-success'
             : record.status === 'Renewal Due' ? 'badge-warning'
             : record.status === 'Inactive' ? 'badge-secondary'
             : 'badge-info';
         tbody.innerHTML += `<tr>
-            <td>${i+1}</td>
-            <td><strong>${escapeHtml(record.name)}</strong></td>
-            <td>${escapeHtml(record.contact) || '—'}</td>
+            <td><strong>${escapeHtml(record.name)}</strong>${record.contact ? `<div style="margin-top:4px; color:#666; font-size:0.78rem;">Contact: ${escapeHtml(record.contact)}</div>` : ''}<div style="margin-top:8px;"><button class="btn btn-warning btn-sm" onclick="editFunder(${recordId})" aria-label="Edit ${escapeHtml(record.name)}">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteFunder(${recordId})" aria-label="Delete ${escapeHtml(record.name)}">Delete</button></div></td>
+            <td>${escapeHtml(record.phone) || '—'}</td>
+            <td>${escapeHtml(record.email) || '—'}</td>
             <td><span class="badge badge-info">${escapeHtml(record.type)}</span></td>
-            <td>${escapeHtml(record.lastContact) || '—'}</td>
-            <td>${escapeHtml(record.nextFollowUp) || '—'} ${isFollowUpDue ? '<span class="badge badge-danger">Due</span>' : ''}</td>
             <td><span class="badge ${statusBadge}">${escapeHtml(record.status)}</span></td>
-            <td>
-                <button class="btn btn-warning btn-sm" onclick="editFunder(${record.id})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteFunder(${record.id})">Delete</button>
-            </td>
+            <td>${escapeHtml(record.website) || '—'}</td>
+            <td>${escapeHtml(record.notes) || '—'}</td>
         </tr>`;
     });
     document.getElementById('funders-alerts').innerHTML = followUpsDue.length
@@ -2319,8 +2320,8 @@ function printReport(type) {
         html += '</table>';
     } else if (type === 'funders') {
         const list = DB.get('funders');
-        html = header + `<h3>Funders Engagement Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Funder</th><th>Contact</th><th>Type</th><th>Status</th><th>Last Contact</th><th>Next Follow-up</th></tr>`;
-        list.forEach((record, i) => { html += `<tr><td>${i+1}</td><td>${record.name}</td><td>${record.contact||''}</td><td>${record.type||''}</td><td>${record.status||''}</td><td>${record.lastContact||''}</td><td>${record.nextFollowUp||''}</td></tr>`; });
+        html = header + `<h3>Funders Directory Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>Funder</th><th>Phone</th><th>Email</th><th>Type of Fund</th><th>Status</th><th>Website</th><th>Notes</th></tr>`;
+        list.forEach(record => { html += `<tr><td>${escapeHtml(record.name)}</td><td>${escapeHtml(record.phone||'')}</td><td>${escapeHtml(record.email||'')}</td><td>${escapeHtml(record.type||'')}</td><td>${escapeHtml(record.status||'')}</td><td>${escapeHtml(record.website||'')}</td><td>${escapeHtml(record.notes||'')}</td></tr>`; });
         html += '</table>';
     } else if (type === 'adoptions') {
         const list = DB.get('adoptions');
