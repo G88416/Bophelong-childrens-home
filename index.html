@@ -498,7 +498,7 @@
             <div id="funders-alerts"></div>
             <div style="overflow-x:auto;">
                 <table>
-                    <thead><tr><th>Funder</th><th>Phone</th><th>Email</th><th>Type of Fund</th><th>Status</th><th>Website</th><th>Notes</th></tr></thead>
+                    <thead><tr><th scope="col">Funder</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col">Type of Fund</th><th scope="col">Status</th><th scope="col">Website</th><th scope="col">Notes</th></tr></thead>
                     <tbody id="funders-tbody"></tbody>
                 </table>
             </div>
@@ -1932,18 +1932,20 @@ function renderFunders() {
     list.forEach(record => {
         const isFollowUpDue = record.nextFollowUp && record.nextFollowUp <= today && record.status !== 'Inactive';
         if (isFollowUpDue) followUpsDue.push(record.name);
+        const recordId = Number(record.id);
+        if (!Number.isFinite(recordId)) return;
         const statusBadge = record.status === 'Active' ? 'badge-success'
             : record.status === 'Renewal Due' ? 'badge-warning'
             : record.status === 'Inactive' ? 'badge-secondary'
             : 'badge-info';
         tbody.innerHTML += `<tr>
-            <td><strong>${escapeHtml(record.name)}</strong>${record.contact ? `<div style="margin-top:4px; color:#666; font-size:0.78rem;">Contact: ${escapeHtml(record.contact)}</div>` : ''}<div style="margin-top:8px;"><button class="btn btn-warning btn-sm" onclick="editFunder(${record.id})">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteFunder(${record.id})">Delete</button></div></td>
+            <td><strong>${escapeHtml(record.name)}</strong>${record.contact ? `<div style="margin-top:4px; color:#666; font-size:0.78rem;">Contact: ${escapeHtml(record.contact)}</div>` : ''}<div style="margin-top:8px;"><button class="btn btn-warning btn-sm" onclick="editFunder(${recordId})" aria-label="Edit ${escapeHtml(record.name)}">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteFunder(${recordId})" aria-label="Delete ${escapeHtml(record.name)}">Delete</button></div></td>
             <td>${escapeHtml(record.phone) || '—'}</td>
             <td>${escapeHtml(record.email) || '—'}</td>
             <td><span class="badge badge-info">${escapeHtml(record.type)}</span></td>
             <td><span class="badge ${statusBadge}">${escapeHtml(record.status)}</span></td>
             <td>${escapeHtml(record.website) || '—'}</td>
-            <td>${escapeHtml(record.notes) || '—'}${isFollowUpDue ? '<div style="margin-top:6px;"><span class="badge badge-danger">Follow-up due</span></div>' : ''}</td>
+            <td>${escapeHtml(record.notes) || '—'}</td>
         </tr>`;
     });
     document.getElementById('funders-alerts').innerHTML = followUpsDue.length
@@ -2318,8 +2320,8 @@ function printReport(type) {
         html += '</table>';
     } else if (type === 'funders') {
         const list = DB.get('funders');
-        html = header + `<h3>Funders Directory Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Funder</th><th>Phone</th><th>Email</th><th>Type of Fund</th><th>Status</th><th>Website</th><th>Notes</th></tr>`;
-        list.forEach((record, i) => { html += `<tr><td>${i+1}</td><td>${record.name}</td><td>${record.phone||''}</td><td>${record.email||''}</td><td>${record.type||''}</td><td>${record.status||''}</td><td>${record.website||''}</td><td>${record.notes||''}</td></tr>`; });
+        html = header + `<h3>Funders Directory Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>Funder</th><th>Phone</th><th>Email</th><th>Type of Fund</th><th>Status</th><th>Website</th><th>Notes</th></tr>`;
+        list.forEach(record => { html += `<tr><td>${escapeHtml(record.name)}</td><td>${escapeHtml(record.phone||'')}</td><td>${escapeHtml(record.email||'')}</td><td>${escapeHtml(record.type||'')}</td><td>${escapeHtml(record.status||'')}</td><td>${escapeHtml(record.website||'')}</td><td>${escapeHtml(record.notes||'')}</td></tr>`; });
         html += '</table>';
     } else if (type === 'adoptions') {
         const list = DB.get('adoptions');
