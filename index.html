@@ -1423,6 +1423,8 @@ function escapeHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+const MAX_FOLLOW_UP_DATE = '9999-12-31';
+
 // ===================== CHILDREN =====================
 function saveChild() {
     const id = document.getElementById('child-edit-id').value;
@@ -1915,7 +1917,11 @@ function renderFunders() {
         const haystack = [record.name, record.contact, record.email, record.phone, record.notes].join(' ').toLowerCase();
         return (!search || haystack.includes(search)) && (!filterStatus || record.status === filterStatus);
     });
-    list.sort((a, b) => (a.nextFollowUp || '9999-12-31').localeCompare(b.nextFollowUp || '9999-12-31') || (b.lastContact || '').localeCompare(a.lastContact || ''));
+    list.sort((a, b) => {
+        const followUpCompare = (a.nextFollowUp || MAX_FOLLOW_UP_DATE).localeCompare(b.nextFollowUp || MAX_FOLLOW_UP_DATE);
+        if (followUpCompare !== 0) return followUpCompare;
+        return (b.lastContact || '').localeCompare(a.lastContact || '');
+    });
     const tbody = document.getElementById('funders-tbody');
     tbody.innerHTML = '';
     document.getElementById('funders-empty').style.display = list.length ? 'none' : 'block';
@@ -2225,7 +2231,7 @@ function renderDashboard() {
         <div class="stat-card"><div class="stat-number">${children.length}</div><div class="stat-label">Total Children</div></div>
         <div class="stat-card green"><div class="stat-number">${staff.length}</div><div class="stat-label">Staff Members</div></div>
         <div class="stat-card orange"><div class="stat-number">R${cashDonations.toLocaleString()}</div><div class="stat-label">Total Cash Donations</div></div>
-        <div class="stat-card teal"><div class="stat-number">${activeFunders}</div><div class="stat-label">Active Funders</div></div>
+        <div class="stat-card"><div class="stat-number">${activeFunders}</div><div class="stat-label">Active Funders</div></div>
         <div class="stat-card red"><div class="stat-number">${pendingAdoptions}</div><div class="stat-label">Pending Adoptions</div></div>
         <div class="stat-card purple"><div class="stat-number">${upcomingEvents}</div><div class="stat-label">Upcoming Events</div></div>
         <div class="stat-card teal"><div class="stat-number">${medical.length}</div><div class="stat-label">Medical Records</div></div>
