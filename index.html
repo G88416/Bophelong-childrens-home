@@ -327,6 +327,7 @@
     <a href="#" onclick="showSection('medical')" data-section="medical">🏥 Medical Records</a>
     <a href="#" onclick="showSection('staff')" data-section="staff">👤 Staff</a>
     <a href="#" onclick="showSection('donations')" data-section="donations">💰 Donations</a>
+    <a href="#" onclick="showSection('funders')" data-section="funders">🤲 Funders</a>
     <a href="#" onclick="showSection('adoptions')" data-section="adoptions">🤝 Adoptions</a>
     <a href="#" onclick="showSection('events')" data-section="events">📅 Events</a>
     <a href="#" onclick="showSection('inventory')" data-section="inventory">📦 Inventory</a>
@@ -344,7 +345,7 @@
         <div class="card">
             <h2>Welcome to the Bophelong Childrens Home Management System</h2>
             <p style="color:#555; line-height:1.6; margin-bottom:12px;">
-                This system provides comprehensive tools for managing all aspects of an orphanage including child records, medical records, staff details, donations, adoptions, events, and inventory. All data is securely stored and synced with Firebase Firestore.
+                This system provides comprehensive tools for managing all aspects of an orphanage including child records, medical records, staff details, donations, funders engagement, adoptions, events, and inventory. All data is securely stored and synced with Firebase Firestore.
             </p>
             <div id="home-alerts"></div>
             <div class="quick-nav">
@@ -353,6 +354,7 @@
                 <div class="quick-card" onclick="showSection('medical')"><div class="quick-card-icon">🏥</div><div class="quick-card-label">Medical Records</div></div>
                 <div class="quick-card" onclick="showSection('staff')"><div class="quick-card-icon">👤</div><div class="quick-card-label">Staff</div></div>
                 <div class="quick-card" onclick="showSection('donations')"><div class="quick-card-icon">💰</div><div class="quick-card-label">Donations</div></div>
+                <div class="quick-card" onclick="showSection('funders')"><div class="quick-card-icon">🤲</div><div class="quick-card-label">Funders</div></div>
                 <div class="quick-card" onclick="showSection('adoptions')"><div class="quick-card-icon">🤝</div><div class="quick-card-label">Adoptions</div></div>
                 <div class="quick-card" onclick="showSection('events')"><div class="quick-card-icon">📅</div><div class="quick-card-label">Events</div></div>
                 <div class="quick-card" onclick="showSection('inventory')"><div class="quick-card-icon">📦</div><div class="quick-card-label">Inventory</div></div>
@@ -478,6 +480,32 @@
         </div>
     </div>
 
+    <!-- Funders Engagement Section -->
+    <div id="funders" class="section">
+        <div class="card">
+            <h2>🤲 Funders Engagement</h2>
+            <button class="btn btn-primary" onclick="openModal('funder-modal')">+ Add Funder</button>
+            <div class="search-bar" style="margin-top:14px;">
+                <input type="text" id="funder-search" placeholder="🔍 Search by funder, contact, email..." oninput="renderFunders()">
+                <select id="funder-filter-status" onchange="renderFunders()">
+                    <option value="">All Statuses</option>
+                    <option>Prospect</option>
+                    <option>Active</option>
+                    <option>Renewal Due</option>
+                    <option>Inactive</option>
+                </select>
+            </div>
+            <div id="funders-alerts"></div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>#</th><th>Funder</th><th>Contact Person</th><th>Type</th><th>Last Contact</th><th>Next Follow-up</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="funders-tbody"></tbody>
+                </table>
+            </div>
+            <p id="funders-empty" style="color:#888; padding:12px; display:none;">No funder engagement records found.</p>
+        </div>
+    </div>
+
     <!-- Manage Adoptions Section -->
     <div id="adoptions" class="section">
         <div class="card">
@@ -549,6 +577,7 @@
                 <button class="btn btn-primary" onclick="printReport('children')">🖨️ Children Report</button>
                 <button class="btn btn-success" onclick="printReport('medical')">🖨️ Medical Report</button>
                 <button class="btn btn-warning" onclick="printReport('financial')">🖨️ Financial Report</button>
+                <button class="btn btn-info" onclick="printReport('funders')">🖨️ Funders Report</button>
                 <button class="btn btn-info" onclick="printReport('adoptions')">🖨️ Adoption Report</button>
                 <button class="btn btn-secondary" onclick="printReport('inventory')">🖨️ Inventory Report</button>
                 <button class="btn btn-danger" onclick="exportData()">💾 Export All Data</button>
@@ -811,9 +840,9 @@
 </div>
 
 <!-- Donation Modal -->
-<div class="modal-overlay" id="donation-modal">
-    <div class="modal">
-        <h3 id="donation-modal-title">Record Donation</h3>
+    <div class="modal-overlay" id="donation-modal">
+        <div class="modal">
+            <h3 id="donation-modal-title">Record Donation</h3>
         <input type="hidden" id="donation-edit-id">
         <div class="form-grid">
             <div><label>Donor Name *</label><input type="text" id="d-donor" placeholder="Full name or Anonymous"></div>
@@ -827,6 +856,37 @@
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('donation-modal')">Cancel</button>
             <button class="btn btn-success" onclick="saveDonation()">Record Donation</button>
+        </div>
+    </div>
+
+    <!-- Funder Modal -->
+    <div class="modal-overlay" id="funder-modal">
+        <div class="modal">
+            <h3 id="funder-modal-title">Add Funder</h3>
+            <input type="hidden" id="funder-edit-id">
+            <div class="form-grid">
+                <div><label>Funder / Organization *</label><input type="text" id="f-name" placeholder="Organization or donor name"></div>
+                <div><label>Contact Person</label><input type="text" id="f-contact" placeholder="Primary contact"></div>
+                <div><label>Engagement Type</label>
+                    <select id="f-type">
+                        <option>Foundation</option><option>Corporate CSR</option><option>Grant Maker</option><option>Individual Sponsor</option><option>Other</option>
+                    </select>
+                </div>
+                <div><label>Status</label>
+                    <select id="f-status">
+                        <option>Prospect</option><option>Active</option><option>Renewal Due</option><option>Inactive</option>
+                    </select>
+                </div>
+                <div><label>Email</label><input type="email" id="f-email" placeholder="contact@example.com"></div>
+                <div><label>Phone</label><input type="tel" id="f-phone" placeholder="Phone number"></div>
+                <div><label>Last Contact Date</label><input type="date" id="f-last-contact"></div>
+                <div><label>Next Follow-up</label><input type="date" id="f-next-followup"></div>
+                <div class="full-width"><label>Notes</label><textarea id="f-notes" placeholder="Key interests, commitments, or meeting notes..."></textarea></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('funder-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveFunder()">Save Funder</button>
+            </div>
         </div>
     </div>
 </div>
@@ -958,7 +1018,7 @@ import { collection, deleteDoc, doc, enableIndexedDbPersistence, enableMultiTabI
 import { getStorage } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
 // Collections managed by this app (declared first so Firebase init can reference it)
-const COLLECTIONS = ['children','medical','vaccines','staff','donations','adoptions','events','inventory','income','expenses'];
+const COLLECTIONS = ['children','medical','vaccines','staff','donations','funders','adoptions','events','inventory','income','expenses'];
 const SETTINGS_DOC_ID = 'org';
 const SETTINGS_STORE_KEY = 'settings';
 const memoryStore = {};
@@ -1321,6 +1381,7 @@ function showSection(id) {
         medical: [renderMedical, renderVaccinations],
         staff: [renderStaff],
         donations: [renderDonations],
+        funders: [renderFunders],
         adoptions: [renderAdoptions],
         events: [renderEvents],
         inventory: [renderInventory],
@@ -1361,6 +1422,8 @@ function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+const MAX_FOLLOW_UP_DATE = '9999-12-31';
 
 // ===================== CHILDREN =====================
 function saveChild() {
@@ -1787,6 +1850,108 @@ function renderDonations() {
     document.getElementById('donation-total').textContent = list.length ? `Total Cash Donations: R${total.toLocaleString()}` : '';
 }
 
+// ===================== FUNDERS =====================
+function saveFunder() {
+    const id = document.getElementById('funder-edit-id').value;
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { toast('Funder or organization name is required', 'error'); return; }
+    const record = {
+        id: id ? parseInt(id) : genId(),
+        name,
+        contact: document.getElementById('f-contact').value.trim(),
+        type: document.getElementById('f-type').value,
+        status: document.getElementById('f-status').value,
+        email: document.getElementById('f-email').value.trim(),
+        phone: document.getElementById('f-phone').value.trim(),
+        lastContact: document.getElementById('f-last-contact').value,
+        nextFollowUp: document.getElementById('f-next-followup').value,
+        notes: document.getElementById('f-notes').value.trim()
+    };
+    let list = DB.get('funders');
+    if (id) { list = list.map(x => x.id === record.id ? record : x); toast('Funder updated!'); }
+    else { list.push(record); toast('Funder added!'); }
+    DB.set('funders', list);
+    closeModal('funder-modal');
+    resetFunderForm();
+    renderFunders();
+}
+
+function resetFunderForm() {
+    ['f-name','f-contact','f-email','f-phone','f-last-contact','f-next-followup','f-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-type').value = 'Foundation';
+    document.getElementById('f-status').value = 'Prospect';
+    document.getElementById('funder-edit-id').value = '';
+    document.getElementById('funder-modal-title').textContent = 'Add Funder';
+}
+
+function editFunder(id) {
+    const list = DB.get('funders');
+    const record = list.find(x => x.id === id);
+    if (!record) return;
+    document.getElementById('funder-edit-id').value = record.id;
+    document.getElementById('f-name').value = record.name;
+    document.getElementById('f-contact').value = record.contact || '';
+    document.getElementById('f-type').value = record.type || 'Foundation';
+    document.getElementById('f-status').value = record.status || 'Prospect';
+    document.getElementById('f-email').value = record.email || '';
+    document.getElementById('f-phone').value = record.phone || '';
+    document.getElementById('f-last-contact').value = record.lastContact || '';
+    document.getElementById('f-next-followup').value = record.nextFollowUp || '';
+    document.getElementById('f-notes').value = record.notes || '';
+    document.getElementById('funder-modal-title').textContent = 'Edit Funder';
+    openModal('funder-modal');
+}
+
+function deleteFunder(id) {
+    if (!confirm('Delete this funder record?')) return;
+    DB.set('funders', DB.get('funders').filter(x => x.id !== id));
+    toast('Funder deleted.', 'info');
+    renderFunders();
+}
+
+function renderFunders() {
+    const search = (document.getElementById('funder-search').value || '').toLowerCase();
+    const filterStatus = document.getElementById('funder-filter-status').value;
+    const today = new Date().toISOString().slice(0,10);
+    let list = DB.get('funders').filter(record => {
+        const haystack = [record.name, record.contact, record.email, record.phone, record.notes].join(' ').toLowerCase();
+        return (!search || haystack.includes(search)) && (!filterStatus || record.status === filterStatus);
+    });
+    list.sort((a, b) => {
+        const followUpCompare = (a.nextFollowUp || MAX_FOLLOW_UP_DATE).localeCompare(b.nextFollowUp || MAX_FOLLOW_UP_DATE);
+        if (followUpCompare !== 0) return followUpCompare;
+        return (b.lastContact || '').localeCompare(a.lastContact || '');
+    });
+    const tbody = document.getElementById('funders-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('funders-empty').style.display = list.length ? 'none' : 'block';
+    const followUpsDue = [];
+    list.forEach((record, i) => {
+        const isFollowUpDue = record.nextFollowUp && record.nextFollowUp <= today && record.status !== 'Inactive';
+        if (isFollowUpDue) followUpsDue.push(record.name);
+        const statusBadge = record.status === 'Active' ? 'badge-success'
+            : record.status === 'Renewal Due' ? 'badge-warning'
+            : record.status === 'Inactive' ? 'badge-secondary'
+            : 'badge-info';
+        tbody.innerHTML += `<tr>
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(record.name)}</strong></td>
+            <td>${escapeHtml(record.contact) || '—'}</td>
+            <td><span class="badge badge-info">${escapeHtml(record.type)}</span></td>
+            <td>${escapeHtml(record.lastContact) || '—'}</td>
+            <td>${escapeHtml(record.nextFollowUp) || '—'} ${isFollowUpDue ? '<span class="badge badge-danger">Due</span>' : ''}</td>
+            <td><span class="badge ${statusBadge}">${escapeHtml(record.status)}</span></td>
+            <td>
+                <button class="btn btn-warning btn-sm" onclick="editFunder(${record.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteFunder(${record.id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+    document.getElementById('funders-alerts').innerHTML = followUpsDue.length
+        ? `<div class="alert alert-warning">📞 Follow-up due for: <strong>${escapeHtml(followUpsDue.join(', '))}</strong></div>`
+        : '';
+}
+
 // ===================== ADOPTIONS =====================
 function saveAdoption() {
     const id = document.getElementById('adoption-edit-id').value;
@@ -2052,22 +2217,27 @@ function renderDashboard() {
     const inventory = DB.get('inventory');
     const medical = DB.get('medical');
     const vaccines = DB.get('vaccines');
+    const funders = DB.get('funders');
     const today = new Date().toISOString().slice(0,10);
 
     const cashDonations = donations.filter(d => d.type === 'Cash').reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
     const pendingAdoptions = adoptions.filter(a => a.status === 'Pending').length;
     const upcomingEvents = events.filter(e => e.date >= today).length;
     const lowStock = inventory.filter(i => i.threshold && i.quantity <= parseFloat(i.threshold)).length;
+    const activeFunders = funders.filter(f => f.status === 'Active').length;
+    const dueFunders = funders.filter(f => f.nextFollowUp && f.nextFollowUp <= today && f.status !== 'Inactive').length;
 
     document.getElementById('stats-grid').innerHTML = `
         <div class="stat-card"><div class="stat-number">${children.length}</div><div class="stat-label">Total Children</div></div>
         <div class="stat-card green"><div class="stat-number">${staff.length}</div><div class="stat-label">Staff Members</div></div>
         <div class="stat-card orange"><div class="stat-number">R${cashDonations.toLocaleString()}</div><div class="stat-label">Total Cash Donations</div></div>
+        <div class="stat-card"><div class="stat-number">${activeFunders}</div><div class="stat-label">Active Funders</div></div>
         <div class="stat-card red"><div class="stat-number">${pendingAdoptions}</div><div class="stat-label">Pending Adoptions</div></div>
         <div class="stat-card purple"><div class="stat-number">${upcomingEvents}</div><div class="stat-label">Upcoming Events</div></div>
         <div class="stat-card teal"><div class="stat-number">${medical.length}</div><div class="stat-label">Medical Records</div></div>
         <div class="stat-card pink"><div class="stat-number">${vaccines.length}</div><div class="stat-label">Vaccinations</div></div>
         <div class="stat-card ${lowStock ? 'red' : 'green'}"><div class="stat-number">${lowStock}</div><div class="stat-label">Low Stock Alerts</div></div>
+        <div class="stat-card ${dueFunders ? 'red' : 'green'}"><div class="stat-number">${dueFunders}</div><div class="stat-label">Funder Follow-ups Due</div></div>
     `;
 
     // Gender chart
@@ -2099,6 +2269,7 @@ function renderDashboard() {
     if (overdueVisits.length) alerts += `<div class="alert alert-danger">🏥 ${overdueVisits.length} overdue medical follow-up(s) need attention.</div>`;
     const overdueVaccines = DB.get('vaccines').filter(v => v.next && v.next < today);
     if (overdueVaccines.length) alerts += `<div class="alert alert-danger">💉 ${overdueVaccines.length} overdue vaccination(s) need attention.</div>`;
+    if (dueFunders > 0) alerts += `<div class="alert alert-warning">🤲 ${dueFunders} funder follow-up(s) are due.</div>`;
     if (upcomingEvents > 0) alerts += `<div class="alert alert-info">📅 ${upcomingEvents} upcoming event(s) scheduled.</div>`;
     document.getElementById('dashboard-alerts').innerHTML = alerts;
 }
@@ -2109,10 +2280,12 @@ function renderHomeAlerts() {
     const lowStock = inventory.filter(i => i.threshold && i.quantity <= parseFloat(i.threshold));
     const overdueVisits = DB.get('medical').filter(r => r.nextVisit && r.nextVisit < today);
     const overdueVax = DB.get('vaccines').filter(v => v.next && v.next < today);
+    const dueFunders = DB.get('funders').filter(f => f.nextFollowUp && f.nextFollowUp <= today && f.status !== 'Inactive');
     let alerts = '';
     if (lowStock.length) alerts += `<div class="alert alert-warning">⚠️ Low stock: <strong>${lowStock.map(i=>i.name).join(', ')}</strong></div>`;
     if (overdueVisits.length) alerts += `<div class="alert alert-danger">🏥 ${overdueVisits.length} overdue medical follow-up(s).</div>`;
     if (overdueVax.length) alerts += `<div class="alert alert-danger">💉 ${overdueVax.length} overdue vaccination(s).</div>`;
+    if (dueFunders.length) alerts += `<div class="alert alert-warning">🤲 Funder follow-up due: <strong>${escapeHtml(dueFunders.map(f=>f.name).join(', '))}</strong></div>`;
     document.getElementById('home-alerts').innerHTML = alerts;
 }
 
@@ -2144,6 +2317,11 @@ function printReport(type) {
         html = header + `<h3>Financial Report (${list.length} donations)</h3><p><strong>Total Cash Received: R${total.toLocaleString()}</strong></p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Donor</th><th>Amount</th><th>Type</th><th>Date</th></tr>`;
         list.forEach((d, i) => { html += `<tr><td>${i+1}</td><td>${d.donor}</td><td>${d.type==='Cash'?'R'+parseFloat(d.amount).toLocaleString():''}</td><td>${d.type}</td><td>${d.date}</td></tr>`; });
         html += '</table>';
+    } else if (type === 'funders') {
+        const list = DB.get('funders');
+        html = header + `<h3>Funders Engagement Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Funder</th><th>Contact</th><th>Type</th><th>Status</th><th>Last Contact</th><th>Next Follow-up</th></tr>`;
+        list.forEach((record, i) => { html += `<tr><td>${i+1}</td><td>${record.name}</td><td>${record.contact||''}</td><td>${record.type||''}</td><td>${record.status||''}</td><td>${record.lastContact||''}</td><td>${record.nextFollowUp||''}</td></tr>`; });
+        html += '</table>';
     } else if (type === 'adoptions') {
         const list = DB.get('adoptions');
         html = header + `<h3>Adoption Report (${list.length} records)</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr><th>#</th><th>Child</th><th>Parent</th><th>Date</th><th>Status</th></tr>`;
@@ -2170,6 +2348,7 @@ function exportData() {
         vaccines: DB.get('vaccines'),
         staff: DB.get('staff'),
         donations: DB.get('donations'),
+        funders: DB.get('funders'),
         adoptions: DB.get('adoptions'),
         events: DB.get('events'),
         inventory: DB.get('inventory'),
@@ -2630,6 +2809,7 @@ Object.assign(window, {
     renderMedical,
     renderStaff,
     renderDonations,
+    renderFunders,
     renderAdoptions,
     renderEvents,
     renderInventory,
@@ -2645,6 +2825,7 @@ Object.assign(window, {
     saveVaccine,
     saveStaff,
     saveDonation,
+    saveFunder,
     saveAdoption,
     saveEvent,
     saveInventory,
@@ -2660,6 +2841,8 @@ Object.assign(window, {
     deleteStaff,
     editDonation,
     deleteDonation,
+    editFunder,
+    deleteFunder,
     editAdoption,
     deleteAdoption,
     editEvent,
