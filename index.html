@@ -368,7 +368,8 @@
     <!-- Dashboard Section -->
     <div id="dashboard" class="section">
         <div class="card">
-            <h2>📊 Dashboard Overview</h2>
+            <h2>📊 Executive Intelligence Dashboard</h2>
+            <p style="color:#555; margin-bottom:14px;">Live Firebase data from every management system is aggregated here and refreshes automatically as records change.</p>
             <div id="dashboard-alerts"></div>
             <div class="stats-grid" id="stats-grid"></div>
             <h3>Gender Distribution</h3>
@@ -1050,8 +1051,14 @@ function scheduleActiveRender() {
     if (scheduledRender) return;
     scheduledRender = requestAnimationFrame(() => {
         scheduledRender = null;
+        try {
+            renderExecutiveIntelligence();
+        } catch (err) {
+            console.warn('Failed to refresh executive intelligence view.', err);
+        }
         const active = document.querySelector('.section.active');
         if (!active || typeof showSection !== 'function') return;
+        if (active.id === 'dashboard' || active.id === 'home') return;
         try {
             showSection(active.id);
         } catch (err) {
@@ -1191,6 +1198,7 @@ const DB = {
         const prev = this.get(key);
         const next = Array.isArray(val) ? cloneData(val) : [];
         memoryStore[key] = next;
+        scheduleActiveRender();
         if (!firestoreDB || !currentUser) {
             if (!firestoreUnavailableWarned) {
                 console.warn('Firestore unavailable; please sign in to sync changes.');
@@ -1219,6 +1227,7 @@ const DB = {
     setObj(key, val) {
         const next = cloneData(val === undefined ? {} : val);
         objectStore[key] = next;
+        scheduleActiveRender();
         if (!firestoreDB || !currentUser) {
             if (!firestoreUnavailableWarned) {
                 console.warn('Firestore unavailable; please sign in to sync settings.');
@@ -2209,6 +2218,11 @@ function renderInventory() {
 }
 
 // ===================== DASHBOARD =====================
+function renderExecutiveIntelligence() {
+    renderDashboard();
+    renderHomeAlerts();
+}
+
 function renderDashboard() {
     const children = DB.get('children');
     const staff = DB.get('staff');
@@ -2219,6 +2233,8 @@ function renderDashboard() {
     const medical = DB.get('medical');
     const vaccines = DB.get('vaccines');
     const funders = DB.get('funders');
+    const income = DB.get('income');
+    const expenses = DB.get('expenses');
     const today = new Date().toISOString().slice(0,10);
 
     const cashDonations = donations.filter(d => d.type === 'Cash').reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
@@ -2227,6 +2243,9 @@ function renderDashboard() {
     const lowStock = inventory.filter(i => i.threshold && i.quantity <= parseFloat(i.threshold)).length;
     const activeFunders = funders.filter(f => f.status === 'Active').length;
     const dueFunders = funders.filter(f => f.nextFollowUp && f.nextFollowUp <= today && f.status !== 'Inactive').length;
+    const totalIncome = income.reduce((sum, entry) => sum + (parseFloat(entry.amount) || 0), 0);
+    const totalExpenses = expenses.reduce((sum, entry) => sum + (parseFloat(entry.amount) || 0), 0);
+    const netBalance = totalIncome - totalExpenses;
 
     document.getElementById('stats-grid').innerHTML = `
         <div class="stat-card"><div class="stat-number">${children.length}</div><div class="stat-label">Total Children</div></div>
@@ -2239,6 +2258,9 @@ function renderDashboard() {
         <div class="stat-card pink"><div class="stat-number">${vaccines.length}</div><div class="stat-label">Vaccinations</div></div>
         <div class="stat-card ${lowStock ? 'red' : 'green'}"><div class="stat-number">${lowStock}</div><div class="stat-label">Low Stock Alerts</div></div>
         <div class="stat-card ${dueFunders ? 'red' : 'green'}"><div class="stat-number">${dueFunders}</div><div class="stat-label">Funder Follow-ups Due</div></div>
+        <div class="stat-card teal"><div class="stat-number">R${totalIncome.toLocaleString()}</div><div class="stat-label">Total Income</div></div>
+        <div class="stat-card orange"><div class="stat-number">R${totalExpenses.toLocaleString()}</div><div class="stat-label">Total Expenses</div></div>
+        <div class="stat-card ${netBalance < 0 ? 'red' : 'green'}"><div class="stat-number">${netBalance < 0 ? '-' : ''}R${Math.abs(netBalance).toLocaleString()}</div><div class="stat-label">Net Balance</div></div>
     `;
 
     // Gender chart
@@ -2272,6 +2294,7 @@ function renderDashboard() {
     if (overdueVaccines.length) alerts += `<div class="alert alert-danger">💉 ${overdueVaccines.length} overdue vaccination(s) need attention.</div>`;
     if (dueFunders > 0) alerts += `<div class="alert alert-warning">🤲 ${dueFunders} funder follow-up(s) are due.</div>`;
     if (upcomingEvents > 0) alerts += `<div class="alert alert-info">📅 ${upcomingEvents} upcoming event(s) scheduled.</div>`;
+    if (netBalance < 0) alerts += `<div class="alert alert-danger">💵 Expenses currently exceed income by R${Math.abs(netBalance).toLocaleString()}.</div>`;
     document.getElementById('dashboard-alerts').innerHTML = alerts;
 }
 
@@ -2282,11 +2305,15 @@ function renderHomeAlerts() {
     const overdueVisits = DB.get('medical').filter(r => r.nextVisit && r.nextVisit < today);
     const overdueVax = DB.get('vaccines').filter(v => v.next && v.next < today);
     const dueFunders = DB.get('funders').filter(f => f.nextFollowUp && f.nextFollowUp <= today && f.status !== 'Inactive');
+    const totalIncome = DB.get('income').reduce((sum, entry) => sum + (parseFloat(entry.amount) || 0), 0);
+    const totalExpenses = DB.get('expenses').reduce((sum, entry) => sum + (parseFloat(entry.amount) || 0), 0);
+    const netBalance = totalIncome - totalExpenses;
     let alerts = '';
     if (lowStock.length) alerts += `<div class="alert alert-warning">⚠️ Low stock: <strong>${lowStock.map(i=>i.name).join(', ')}</strong></div>`;
     if (overdueVisits.length) alerts += `<div class="alert alert-danger">🏥 ${overdueVisits.length} overdue medical follow-up(s).</div>`;
     if (overdueVax.length) alerts += `<div class="alert alert-danger">💉 ${overdueVax.length} overdue vaccination(s).</div>`;
     if (dueFunders.length) alerts += `<div class="alert alert-warning">🤲 Funder follow-up due: <strong>${escapeHtml(dueFunders.map(f=>f.name).join(', '))}</strong></div>`;
+    if (netBalance < 0) alerts += `<div class="alert alert-danger">💵 Executive alert: net balance is negative by R${Math.abs(netBalance).toLocaleString()}.</div>`;
     document.getElementById('home-alerts').innerHTML = alerts;
 }
 
