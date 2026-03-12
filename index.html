@@ -1054,10 +1054,12 @@ function scheduleActiveRender() {
         try {
             renderExecutiveIntelligence();
         } catch (err) {
-            console.warn('Failed to refresh executive intelligence view.', err);
+            console.warn('Failed to refresh executive dashboard.', err);
         }
         const active = document.querySelector('.section.active');
         if (!active || typeof showSection !== 'function') return;
+        // Home and dashboard are already refreshed above so we avoid a second
+        // pass through showSection for those views.
         if (active.id === 'dashboard' || active.id === 'home') return;
         try {
             showSection(active.id);
@@ -1431,6 +1433,14 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatCurrency(amount) {
+    return `R${Math.abs(amount).toLocaleString()}`;
+}
+
+function formatSignedCurrency(amount) {
+    return `${amount < 0 ? '-' : ''}${formatCurrency(amount)}`;
 }
 
 const MAX_FOLLOW_UP_DATE = '9999-12-31';
@@ -2258,9 +2268,9 @@ function renderDashboard() {
         <div class="stat-card pink"><div class="stat-number">${vaccines.length}</div><div class="stat-label">Vaccinations</div></div>
         <div class="stat-card ${lowStock ? 'red' : 'green'}"><div class="stat-number">${lowStock}</div><div class="stat-label">Low Stock Alerts</div></div>
         <div class="stat-card ${dueFunders ? 'red' : 'green'}"><div class="stat-number">${dueFunders}</div><div class="stat-label">Funder Follow-ups Due</div></div>
-        <div class="stat-card teal"><div class="stat-number">R${totalIncome.toLocaleString()}</div><div class="stat-label">Total Income</div></div>
-        <div class="stat-card orange"><div class="stat-number">R${totalExpenses.toLocaleString()}</div><div class="stat-label">Total Expenses</div></div>
-        <div class="stat-card ${netBalance < 0 ? 'red' : 'green'}"><div class="stat-number">${netBalance < 0 ? '-' : ''}R${Math.abs(netBalance).toLocaleString()}</div><div class="stat-label">Net Balance</div></div>
+        <div class="stat-card teal"><div class="stat-number">${formatCurrency(totalIncome)}</div><div class="stat-label">Total Income</div></div>
+        <div class="stat-card orange"><div class="stat-number">${formatCurrency(totalExpenses)}</div><div class="stat-label">Total Expenses</div></div>
+        <div class="stat-card ${netBalance < 0 ? 'red' : 'green'}"><div class="stat-number">${formatSignedCurrency(netBalance)}</div><div class="stat-label">Net Balance</div></div>
     `;
 
     // Gender chart
@@ -2294,7 +2304,7 @@ function renderDashboard() {
     if (overdueVaccines.length) alerts += `<div class="alert alert-danger">💉 ${overdueVaccines.length} overdue vaccination(s) need attention.</div>`;
     if (dueFunders > 0) alerts += `<div class="alert alert-warning">🤲 ${dueFunders} funder follow-up(s) are due.</div>`;
     if (upcomingEvents > 0) alerts += `<div class="alert alert-info">📅 ${upcomingEvents} upcoming event(s) scheduled.</div>`;
-    if (netBalance < 0) alerts += `<div class="alert alert-danger">💵 Expenses currently exceed income by R${Math.abs(netBalance).toLocaleString()}.</div>`;
+    if (netBalance < 0) alerts += `<div class="alert alert-danger">💵 Expenses currently exceed income by ${formatCurrency(netBalance)}.</div>`;
     document.getElementById('dashboard-alerts').innerHTML = alerts;
 }
 
@@ -2313,7 +2323,7 @@ function renderHomeAlerts() {
     if (overdueVisits.length) alerts += `<div class="alert alert-danger">🏥 ${overdueVisits.length} overdue medical follow-up(s).</div>`;
     if (overdueVax.length) alerts += `<div class="alert alert-danger">💉 ${overdueVax.length} overdue vaccination(s).</div>`;
     if (dueFunders.length) alerts += `<div class="alert alert-warning">🤲 Funder follow-up due: <strong>${escapeHtml(dueFunders.map(f=>f.name).join(', '))}</strong></div>`;
-    if (netBalance < 0) alerts += `<div class="alert alert-danger">💵 Executive alert: net balance is negative by R${Math.abs(netBalance).toLocaleString()}.</div>`;
+    if (netBalance < 0) alerts += `<div class="alert alert-danger">💵 Executive alert: net balance is negative by ${formatCurrency(netBalance)}.</div>`;
     document.getElementById('home-alerts').innerHTML = alerts;
 }
 
